@@ -74,6 +74,13 @@ export interface QuestionAttemptRow {
   respondida_em: string;
 }
 
+/**
+ * Formato mínimo esperado pelo `@supabase/supabase-js` (postgrest-js) para
+ * tipar o client. As chaves `Views`/`Functions` e a propriedade
+ * `Relationships` em cada tabela são obrigatórias nesta versão do SDK —
+ * sem elas o `GenericSchema` não é satisfeito e `supabase.from(...)`
+ * resolve para `never`, quebrando `insert`/`update`.
+ */
 /** Formato mínimo esperado pelo `@supabase/supabase-js` para tipar o client. */
 export interface Database {
   public: {
