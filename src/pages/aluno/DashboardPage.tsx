@@ -85,7 +85,7 @@ export function DashboardPage() {
     <>
       <Topbar titulo={`Bem-vindo, ${profile.nome}! 👋`} subtitulo="Vamos juntos rumo à sua aprovação." />
 
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Questões feitas" valor={carregando ? "…" : String(estatisticas?.questoesFeitas ?? 0)} icone={<IconCheck />} />
           <StatCard

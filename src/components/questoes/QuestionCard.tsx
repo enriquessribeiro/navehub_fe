@@ -12,7 +12,9 @@ interface QuestionCardProps {
   questao: QuestionRow;
   numero: number;
   total: number;
-  onResponder: (params: { respostaLetra: Letra; correta: boolean }) => void;
+  /** Deve rejeitar (throw) se o salvamento da tentativa falhar — só então a
+   *  resposta é marcada como escolhida, evitando "falso sucesso". */
+  onResponder: (params: { respostaLetra: Letra; correta: boolean }) => Promise<void>;
   onProxima: () => void;
   temProxima: boolean;
 }
@@ -20,11 +22,26 @@ interface QuestionCardProps {
 export function QuestionCard({ questao, numero, total, onResponder, onProxima, temProxima }: QuestionCardProps) {
   const [selecionada, setSelecionada] = useState<Letra | null>(null);
   const [revelada, setRevelada] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [erroSalvamento, setErroSalvamento] = useState<string | null>(null);
 
-  function escolher(letra: Letra) {
-    if (selecionada) return; // resposta já registrada — não deixa trocar depois de escolher
-    setSelecionada(letra);
-    onResponder({ respostaLetra: letra, correta: letra === questao.gabarito });
+  async function escolher(letra: Letra) {
+    // resposta já registrada, ou salvando — não deixa trocar nem clicar 2x
+    if (selecionada !== null || salvando) return;
+    setSalvando(true);
+    setErroSalvamento(null);
+    try {
+      await onResponder({ respostaLetra: letra, correta: letra === questao.gabarito });
+      setSelecionada(letra);
+    } catch (erroResposta) {
+      // Se o salvamento falhou, a questão NÃO é marcada como respondida e
+      // o aluno vê o motivo — pode tentar de novo.
+      setErroSalvamento(
+        erroResposta instanceof Error ? erroResposta.message : "Não foi possível salvar sua resposta. Tente novamente."
+      );
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -65,8 +82,9 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
             <button
               key={alternativa.letra}
               type="button"
-              onClick={() => escolher(alternativa.letra)}
-              disabled={selecionada !== null}
+              onClick={() => void escolher(alternativa.letra)}
+              disabled={selecionada !== null || salvando}
+              aria-pressed={selecionada === alternativa.letra}
               className={cn(
                 "flex w-full items-start gap-3 rounded-control border px-4 py-3 text-left text-sm transition-colors",
                 "disabled:cursor-default",
@@ -78,16 +96,27 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
             >
               <span className="font-mono font-semibold text-ink">{alternativa.letra})</span>
               <span className="text-ink">{alternativa.texto}</span>
+              {mostrarResultado && (
+                <span className="sr-only">
+                  {éCorreta ? "Resposta correta" : éSelecionada ? "Sua resposta, incorreta" : ""}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
+      {erroSalvamento && (
+        <p className="text-sm font-medium text-danger">
+          {erroSalvamento} — escolha a alternativa de novo para tentar salvar.
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <Button variant="ghost" onClick={() => setRevelada(true)} disabled={!selecionada}>
           Ver gabarito
         </Button>
-        <Button onClick={onProxima} disabled={!temProxima}>
+        <Button onClick={onProxima} disabled={!temProxima || salvando}>
           Próxima questão →
         </Button>
       </div>

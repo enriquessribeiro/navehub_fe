@@ -4,16 +4,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { cn } from "@/lib/cn";
 import { useAuth } from "@/contexts/AuthContext";
-import type { PapelCadastro } from "@/contexts/AuthContext";
 
 export function SignupPage() {
   const { signUp } = useAuth();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [papel, setPapel] = useState<PapelCadastro>("aluno");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
@@ -28,7 +25,10 @@ export function SignupPage() {
     }
 
     setEnviando(true);
-    const resultado = await signUp({ nome: nome.trim(), email: email.trim(), senha, papel });
+    // O papel é SEMPRE "aluno" no cadastro público (o trigger do banco
+    // também força isso). Professores são criados pela equipe/admin direto
+    // no banco — nunca por auto-cadastro.
+    const resultado = await signUp({ nome: nome.trim(), email: email.trim(), senha, papel: "aluno" });
     setEnviando(false);
 
     if (resultado.error) {
@@ -68,27 +68,6 @@ export function SignupPage() {
 
         <Card>
           <form onSubmit={lidarComEnvio} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-ink">Eu sou</span>
-              <div className="grid grid-cols-2 gap-2">
-                {(["aluno", "professor"] as PapelCadastro[]).map((opcao) => (
-                  <button
-                    key={opcao}
-                    type="button"
-                    onClick={() => setPapel(opcao)}
-                    className={cn(
-                      "rounded-control border px-3 py-2.5 text-sm font-semibold capitalize transition-colors",
-                      papel === opcao
-                        ? "border-nave-yellow bg-nave-yellow-soft text-nave-yellow-strong"
-                        : "border-line text-muted hover:border-nave-yellow-strong"
-                    )}
-                  >
-                    {opcao}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <Input label="Nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
             <Input
               label="E-mail"

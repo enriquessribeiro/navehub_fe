@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Topbar } from "@/components/layout/Topbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { salvarUltimaAtividade } from "@/lib/continuarDeOndeParou";
-import { listQuestions, registrarTentativa } from "@/services/questionsService";
+import { listarAnosDisponiveis, listQuestions, registrarTentativa } from "@/services/questionsService";
 import type { AreaEnem, QuestionRow } from "@/types/database.types";
 
 interface EstadoNavegacao {
@@ -14,6 +14,11 @@ interface EstadoNavegacao {
   ano?: number | null;
   idioma?: string | null;
 }
+
+/** Questões por requisição. O aluno continua vendo "uma de cada vez", mas a
+ *  paginação vai em lote: navegar entre questões do mesmo lote não faz ida
+ *  ao banco, e o `count` exato só acontece quando um lote esgota. */
+const LOTE_POR_PAGINA = 20;
 
 export function QuestoesPage() {
   const { profile } = useAuth();
@@ -23,77 +28,100 @@ export function QuestoesPage() {
   const [ano, setAno] = useState<number | null>(estadoInicial?.ano ?? null);
   const [area, setArea] = useState<AreaEnem | null>(estadoInicial?.area ?? null);
   const [idioma, setIdioma] = useState<string | null>(estadoInicial?.idioma ?? "portugues");
-  const [pagina, setPagina] = useState(1);
 
   const [questoes, setQuestoes] = useState<QuestionRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [indice, setIndice] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [anosDisponiveis, setAnosDisponiveis] = useState<number[] | null>(null);
 
-  const buscar = useCallback(
-    async (paginaAlvo: number) => {
-      setCarregando(true);
-      setErro(null);
-      try {
-        const resultado = await listQuestions({ ano, area, idioma, pagina: paginaAlvo, porPagina: 1 });
-        setQuestoes(resultado.questoes);
-        setTotal(resultado.total);
-      } catch (erroBusca) {
-        setErro(erroBusca instanceof Error ? erroBusca.message : "Não foi possível buscar as questões.");
-        setQuestoes([]);
-        setTotal(0);
-      } finally {
-        setCarregando(false);
-      }
-    },
-    [ano, area, idioma]
-  );
+  const buscarPrimeiraPagina = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const resultado = await listQuestions({ ano, area, idioma, pagina: 1, porPagina: LOTE_POR_PAGINA });
+      setQuestoes(resultado.questoes);
+      setTotal(resultado.total);
+      setIndice(0);
+    } catch (erroBusca) {
+      setErro(erroBusca instanceof Error ? erroBusca.message : "Não foi possível buscar as questões.");
+      setQuestoes([]);
+      setTotal(0);
+      setIndice(0);
+    } finally {
+      setCarregando(false);
+    }
+  }, [ano, area, idioma]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    void buscar(1);
+    void buscarPrimeiraPagina();
+  }, []);
+
+  useEffect(() => {
+    void listarAnosDisponiveis().then(setAnosDisponiveis);
   }, []);
 
   function lidarComBusca() {
-    setPagina(1);
     if (profile) {
       salvarUltimaAtividade(profile.id, { area, ano, idioma });
     }
-    void buscar(1);
+    void buscarPrimeiraPagina();
   }
 
-  function lidarComProxima() {
-    const proximaPagina = pagina + 1;
-    setPagina(proximaPagina);
-    void buscar(proximaPagina);
-  }
-
-  async function lidarComResposta(params: { respostaLetra: "A" | "B" | "C" | "D" | "E"; correta: boolean }) {
-    if (!profile || questoes.length === 0) return;
+  async function buscarProximaPagina() {
+    // Próxima página do servidor baseada no tamanho do buffer acumulado.
+    const proximaPagina = Math.floor(questoes.length / LOTE_POR_PAGINA) + 1;
+    setCarregando(true);
+    setErro(null);
     try {
-      await registrarTentativa({
-        alunoId: profile.id,
-        questionId: questoes[0].id,
-        respostaDada: params.respostaLetra,
-        correta: params.correta,
-      });
-    } catch (erroResposta) {
-      console.error("[navehub] erro ao registrar tentativa:", erroResposta);
+      const resultado = await listQuestions({ ano, area, idioma, pagina: proximaPagina, porPagina: LOTE_POR_PAGINA });
+      setQuestoes((atual) => [...atual, ...resultado.questoes]);
+      setTotal(resultado.total);
+      if (resultado.questoes.length > 0) {
+        setIndice((atual) => atual + 1);
+      }
+    } catch (erroBusca) {
+      setErro(erroBusca instanceof Error ? erroBusca.message : "Não foi possível carregar mais questões.");
+    } finally {
+      setCarregando(false);
     }
   }
 
-  const questaoAtual = questoes[0];
+  function lidarComProxima() {
+    if (indice + 1 < questoes.length) {
+      setIndice(indice + 1);
+      return;
+    }
+    void buscarProximaPagina();
+  }
+
+  async function lidarComResposta(params: { respostaLetra: "A" | "B" | "C" | "D" | "E"; correta: boolean }) {
+    // Lança o erro para o QuestionCard exibir — o aluno precisa saber que a
+    // resposta dele NÃO foi salva, em vez de um silêncio que parece sucesso.
+    if (!profile || questoes[indice] === undefined) return;
+    await registrarTentativa({
+      alunoId: profile.id,
+      questionId: questoes[indice].id,
+      respostaDada: params.respostaLetra,
+      correta: params.correta,
+    });
+  }
+
+  const questaoAtual = questoes[indice];
 
   return (
     <>
       <Topbar titulo="Questões" subtitulo="Pratique, aprenda e acompanhe seu progresso." />
 
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-8">
         <Card>
           <QuestionFilters
             ano={ano}
             area={area}
             idioma={idioma}
+            anos={anosDisponiveis ?? undefined}
             onChangeAno={setAno}
             onChangeArea={setArea}
             onChangeIdioma={setIdioma}
@@ -122,11 +150,11 @@ export function QuestoesPage() {
           <QuestionCard
             key={questaoAtual.id}
             questao={questaoAtual}
-            numero={pagina}
+            numero={indice + 1}
             total={total}
             onResponder={lidarComResposta}
             onProxima={lidarComProxima}
-            temProxima={pagina < total}
+            temProxima={indice < total - 1}
           />
         )}
 

@@ -25,6 +25,8 @@ interface QuestionFiltersProps {
   onChangeIdioma: (valor: string | null) => void;
   onBuscar: () => void;
   carregando?: boolean;
+  /** Anos vindos do banco; sem ele, usa a lista estática de fallback. */
+  anos?: number[];
 }
 
 export function QuestionFilters({
@@ -36,7 +38,10 @@ export function QuestionFilters({
   onChangeIdioma,
   onBuscar,
   carregando,
+  anos,
 }: QuestionFiltersProps) {
+  const listaAnos = anos ?? ANOS_DISPONIVEIS;
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       <Select
@@ -45,7 +50,7 @@ export function QuestionFilters({
         onChange={(e) => onChangeAno(e.target.value ? Number(e.target.value) : null)}
       >
         <option value="">Todos</option>
-        {ANOS_DISPONIVEIS.map((anoDisponivel) => (
+        {listaAnos.map((anoDisponivel) => (
           <option key={anoDisponivel} value={anoDisponivel}>
             {anoDisponivel}
           </option>

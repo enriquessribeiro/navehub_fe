@@ -47,12 +47,24 @@ const ITENS_ALUNO: NavItem[] = [
 
 const ITENS_PROFESSOR: NavItem[] = [{ to: "/redacao", label: "Redação", icon: <IconRedacao /> }];
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Mobile: mostra o drawer quando true. Desktop ignora e sempre mostra. */
+  aberto?: boolean;
+  onFechar?: () => void;
+}
+
+export function Sidebar({ aberto = false, onFechar }: SidebarProps) {
   const { profile, signOut } = useAuth();
   const itens = profile?.papel === "professor" ? ITENS_PROFESSOR : ITENS_ALUNO;
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col bg-nave-black text-white">
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-nave-black text-white transition-transform duration-200",
+        "lg:static lg:translate-x-0",
+        aberto ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
       <div className="flex items-center gap-2.5 px-6 py-6">
         <svg viewBox="0 0 64 64" className="h-8 w-8">
           <circle cx="32" cy="32" r="30" fill="#0B0B0C" />
@@ -60,6 +72,18 @@ export function Sidebar() {
           <path d="M24 36 L34 26 L34 31 L40 31 L40 34 L34 34 L34 39 Z" fill="#F2B705" />
         </svg>
         <span className="font-display text-lg font-semibold tracking-tight">NaveHub</span>
+        {onFechar && (
+          <button
+            type="button"
+            onClick={onFechar}
+            aria-label="Fechar menu"
+            className="ml-auto rounded-control p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5">
+              <path d="M5 5l10 10M15 5 5 15" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 px-3">

@@ -5,7 +5,7 @@ interface TopbarProps {
 
 export function Topbar({ titulo, subtitulo }: TopbarProps) {
   return (
-    <header className="border-b border-line bg-surface px-8 py-5">
+    <header className="border-b border-line bg-surface px-4 py-5 sm:px-8">
       <h1 className="font-display text-xl font-semibold text-ink">{titulo}</h1>
       {subtitulo && <p className="mt-0.5 text-sm text-muted">{subtitulo}</p>}
     </header>

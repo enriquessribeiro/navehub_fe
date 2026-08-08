@@ -81,7 +81,7 @@ function RedacaoAluno({ profile }: { profile: ProfileRow }) {
   return (
     <>
       <Topbar titulo="Redação" subtitulo="Envie sua redação e receba a correção do seu professor." />
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-8">
         <Abas
           ativa={aba}
           onSelecionar={(chave) => setAba(chave as "enviar" | "minhas")}
@@ -149,7 +149,7 @@ function RedacaoProfessor({ profile }: { profile: ProfileRow }) {
   return (
     <>
       <Topbar titulo="Redação" subtitulo="Fila de correção das redações enviadas pelos alunos." />
-      <div className="space-y-6 p-8">
+      <div className="space-y-6 p-4 sm:p-8">
         <Abas
           ativa={aba}
           onSelecionar={(chave) => setAba(chave as "pendentes" | "corrigidas")}

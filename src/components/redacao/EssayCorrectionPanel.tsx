@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -15,6 +15,46 @@ export function EssayCorrectionPanel({ redacao, onFechar, onSalvar }: EssayCorre
   const [feedback, setFeedback] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+  const focoAnteriorRef = useRef<HTMLElement | null>(null);
+
+  // Dialog acessível: foco vai pro painel ao abrir, ESC fecha e o foco volta
+  // para onde estava. O Tab fica limitado ao conteúdo do modal (focus trap).
+  useEffect(() => {
+    focoAnteriorRef.current = document.activeElement as HTMLElement | null;
+    painelRef.current?.focus();
+
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") {
+        onFechar();
+        return;
+      }
+      if (evento.key !== "Tab") return;
+
+      const focaveis = Array.from(
+        painelRef.current?.querySelectorAll<HTMLElement>(
+          'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      );
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (evento.shiftKey && document.activeElement === primeiro) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primeiro.focus();
+      }
+    }
+
+    window.addEventListener("keydown", aoTeclar);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar);
+      focoAnteriorRef.current?.focus();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function lidarComSalvar() {
     setErro(null);
@@ -39,11 +79,20 @@ export function EssayCorrectionPanel({ redacao, onFechar, onSalvar }: EssayCorre
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-nave-black/60 p-4">
+    <div
+      ref={painelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialog-titulo-redacao"
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-nave-black/60 p-4 outline-none"
+    >
       <Card className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-display text-lg font-semibold text-ink">{redacao.tema}</h2>
+            <h2 id="dialog-titulo-redacao" className="font-display text-lg font-semibold text-ink">
+              {redacao.tema}
+            </h2>
             <p className="mt-0.5 text-sm text-muted">{redacao.aluno?.nome ?? "Aluno"}</p>
           </div>
           <Button variant="ghost" onClick={onFechar}>

@@ -24,6 +24,34 @@ export interface ResultadoQuestoes {
  */
 export const ANOS_DISPONIVEIS = Array.from({ length: 2023 - 2009 + 1 }, (_, i) => 2023 - i);
 
+/** Anos que realmente existem no banco (sem hardcode), consultados uma vez
+ *  por sessão. Em caso de erro, cai no fallback estático `ANOS_DISPONIVEIS`
+ *  para nunca bloquear a tela de filtros. */
+let anosDisponiveisCache: number[] | null = null;
+
+export async function listarAnosDisponiveis(): Promise<number[]> {
+  if (anosDisponiveisCache) return anosDisponiveisCache;
+
+  try {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("ano")
+      .order("ano", { ascending: false })
+      .limit(1000);
+
+    if (error) {
+      anosDisponiveisCache = ANOS_DISPONIVEIS;
+    } else {
+      const anos = [...new Set((data ?? []).map((linha) => linha.ano))].sort((a, b) => b - a);
+      anosDisponiveisCache = anos.length > 0 ? anos : ANOS_DISPONIVEIS;
+    }
+  } catch {
+    anosDisponiveisCache = ANOS_DISPONIVEIS;
+  }
+
+  return anosDisponiveisCache;
+}
+
 export async function listQuestions(filtros: FiltrosQuestoes): Promise<ResultadoQuestoes> {
   let query = supabase.from("questions").select("*", { count: "exact" });
 

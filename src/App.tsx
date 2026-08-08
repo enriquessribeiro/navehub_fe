@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { RoleRoute } from "@/routes/RoleRoute";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/Button";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { SignupPage } from "@/pages/auth/SignupPage";
 import { DashboardPage } from "@/pages/aluno/DashboardPage";
@@ -11,13 +12,37 @@ import { RedacaoPage } from "@/pages/redacao/RedacaoPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
 /**
+ * Usuário logado cujo profile não existe (trigger falhou, conta criada
+ * manualmente etc.) não pode ficar numa tela em branco — mostramos um
+ * aviso com saída da conta.
+ */
+function SemPerfil() {
+  const { signOut } = useAuth();
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas p-6 text-center">
+      <div>
+        <h1 className="font-display text-lg font-semibold text-ink">Não conseguimos carregar o seu perfil</h1>
+        <p className="mt-2 max-w-md text-sm text-muted">
+          Algo deu errado ao buscar a sua conta no NaveHub. Saia e entre novamente; se o problema persistir, fale com a
+          equipe do Nave Cursos.
+        </p>
+      </div>
+      <Button onClick={() => void signOut()}>Sair da conta</Button>
+    </div>
+  );
+}
+
+/**
  * Depois do login, cada papel cai numa home diferente: aluno vai para o
  * dashboard (com métricas), professor cai direto na fila de redações
  * pendentes — sem dashboard de questões nesta primeira versão.
  */
 function HomeRedirect() {
-  const { profile } = useAuth();
-  if (!profile) return null;
+  const { profile, carregando } = useAuth();
+  if (carregando || !profile) {
+    return carregando ? null : <SemPerfil />;
+  }
   return <Navigate to={profile.papel === "professor" ? "/redacao" : "/dashboard"} replace />;
 }
 
