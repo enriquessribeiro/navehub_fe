@@ -1,0 +1,15 @@
+# dependências
+node_modules/
+
+# build
+dist/
+
+# cache de tipos do tsc -b
+*.tsbuildinfo
+
+# artefatos gerados pelo projeto referenciado (vite.config.ts compilado)
+vite.config.js
+vite.config.d.ts
+
+# ambiente
+.env
