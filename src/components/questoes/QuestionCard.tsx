@@ -14,12 +14,22 @@ interface QuestionCardProps {
   total: number;
   /** Deve rejeitar (throw) se o salvamento da tentativa falhar — só então a
    *  resposta é marcada como escolhida, evitando "falso sucesso". */
-  onResponder: (params: { respostaLetra: Letra; correta: boolean }) => Promise<void>;
+  onResponder: (params: {
+    respostaLetra: Letra;
+    correta: boolean;
+  }) => Promise<void>;
   onProxima: () => void;
   temProxima: boolean;
 }
 
-export function QuestionCard({ questao, numero, total, onResponder, onProxima, temProxima }: QuestionCardProps) {
+export function QuestionCard({
+  questao,
+  numero,
+  total,
+  onResponder,
+  onProxima,
+  temProxima,
+}: QuestionCardProps) {
   const [selecionada, setSelecionada] = useState<Letra | null>(null);
   const [revelada, setRevelada] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -31,13 +41,18 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
     setSalvando(true);
     setErroSalvamento(null);
     try {
-      await onResponder({ respostaLetra: letra, correta: letra === questao.gabarito });
+      await onResponder({
+        respostaLetra: letra,
+        correta: letra === questao.gabarito,
+      });
       setSelecionada(letra);
     } catch (erroResposta) {
       // Se o salvamento falhou, a questão NÃO é marcada como respondida e
       // o aluno vê o motivo — pode tentar de novo.
       setErroSalvamento(
-        erroResposta instanceof Error ? erroResposta.message : "Não foi possível salvar sua resposta. Tente novamente."
+        erroResposta instanceof Error
+          ? erroResposta.message
+          : "Não foi possível salvar sua resposta. Tente novamente.",
       );
     } finally {
       setSalvando(false);
@@ -49,7 +64,9 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="neutral">ENEM {questao.ano}</Badge>
-          {questao.area && <Badge tone="neutral">{ROTULOS_AREA[questao.area]}</Badge>}
+          {questao.area && (
+            <Badge tone="neutral">{ROTULOS_AREA[questao.area]}</Badge>
+          )}
         </div>
         <span className="font-mono text-xs text-muted">
           Questão {numero} de {total}
@@ -58,17 +75,26 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
 
       <div className="space-y-3">
         {questao.enunciado && (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{questao.enunciado}</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+            {questao.enunciado}
+          </p>
         )}
         {questao.arquivos.length > 0 && (
           <div className="flex flex-col gap-3">
             {questao.arquivos.map((url) => (
-              <img key={url} src={url} alt="Figura de apoio da questão" className="max-w-full rounded-control border border-line" />
+              <img
+                key={url}
+                src={url}
+                alt="Figura de apoio da questão"
+                className="max-w-md rounded-control border border-line "
+              />
             ))}
           </div>
         )}
         {questao.introducao_alternativas && (
-          <p className="text-sm font-medium text-ink">{questao.introducao_alternativas}</p>
+          <p className="text-sm font-medium text-ink">
+            {questao.introducao_alternativas}
+          </p>
         )}
       </div>
 
@@ -88,17 +114,32 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
               className={cn(
                 "flex w-full items-start gap-3 rounded-control border px-4 py-3 text-left text-sm transition-colors",
                 "disabled:cursor-default",
-                !mostrarResultado && "border-line hover:border-nave-yellow-strong",
-                mostrarResultado && éCorreta && "border-success bg-success-soft",
-                mostrarResultado && éSelecionada && !éCorreta && "border-danger bg-danger-soft",
-                mostrarResultado && !éSelecionada && !éCorreta && "border-line opacity-60"
+                !mostrarResultado &&
+                  "border-line hover:border-nave-yellow-strong",
+                mostrarResultado &&
+                  éCorreta &&
+                  "border-success bg-success-soft",
+                mostrarResultado &&
+                  éSelecionada &&
+                  !éCorreta &&
+                  "border-danger bg-danger-soft",
+                mostrarResultado &&
+                  !éSelecionada &&
+                  !éCorreta &&
+                  "border-line opacity-60",
               )}
             >
-              <span className="font-mono font-semibold text-ink">{alternativa.letra})</span>
+              <span className="font-mono font-semibold text-ink">
+                {alternativa.letra})
+              </span>
               <span className="text-ink">{alternativa.texto}</span>
               {mostrarResultado && (
                 <span className="sr-only">
-                  {éCorreta ? "Resposta correta" : éSelecionada ? "Sua resposta, incorreta" : ""}
+                  {éCorreta
+                    ? "Resposta correta"
+                    : éSelecionada
+                      ? "Sua resposta, incorreta"
+                      : ""}
                 </span>
               )}
             </button>
@@ -113,7 +154,11 @@ export function QuestionCard({ questao, numero, total, onResponder, onProxima, t
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <Button variant="ghost" onClick={() => setRevelada(true)} disabled={!selecionada}>
+        <Button
+          variant="ghost"
+          onClick={() => setRevelada(true)}
+          disabled={!selecionada}
+        >
           Ver gabarito
         </Button>
         <Button onClick={onProxima} disabled={!temProxima || salvando}>
