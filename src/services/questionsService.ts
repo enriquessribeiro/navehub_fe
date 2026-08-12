@@ -144,3 +144,45 @@ export async function getEstatisticasAluno(alunoId: string): Promise<Estatistica
     desempenhoPorArea,
   };
 }
+
+export interface PontoEvolucao {
+  dia: string;
+  feitas: number;
+  acertos: number;
+}
+
+/**
+ * Série diária de questões respondidas e acertos, para o gráfico de evolução
+ * do dashboard. Como o registro de tentativa é um upsert único por questão
+ * (`aluno_id, question_id`), a série reflete a última resposta de cada
+ * questão — consistente com o total de "questões feitas" dos cards.
+ *
+ * A definição de janela (7/30/90 dias) fica no componente: buscamos a
+ * série completa uma única vez por sessão e o seletor de período só fatia
+ * os dados no client, sem novas consultas.
+ */
+export async function getEvolucaoAluno(alunoId: string): Promise<PontoEvolucao[]> {
+  const { data, error } = await supabase
+    .from("question_attempts")
+    .select("correta, respondida_em")
+    .eq("aluno_id", alunoId);
+
+  if (error) {
+    throw new Error(`Não foi possível carregar sua evolução: ${error.message}`);
+  }
+
+  const linhas = (data ?? []) as unknown as Array<{ correta: boolean; respondida_em: string | null }>;
+  const porDia = new Map<string, PontoEvolucao>();
+
+  for (const linha of linhas) {
+    if (!linha.respondida_em) continue;
+
+    const dia = linha.respondida_em.slice(0, 10);
+    const ponto = porDia.get(dia) ?? { dia, feitas: 0, acertos: 0 };
+    ponto.feitas += 1;
+    if (linha.correta) ponto.acertos += 1;
+    porDia.set(dia, ponto);
+  }
+
+  return [...porDia.values()].sort((a, b) => (a.dia < b.dia ? -1 : 1));
+}

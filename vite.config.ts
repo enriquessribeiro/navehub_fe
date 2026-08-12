@@ -9,6 +9,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Recharts é a única dependência pesada "de visualização"; isolada
+          // em chunk próprio para cache estável e bundle principal enxuto.
+          recharts: ["recharts"],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
   },

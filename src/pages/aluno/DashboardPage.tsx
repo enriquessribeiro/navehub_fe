@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import { ROTULOS_AREA } from "@/components/questoes/QuestionFilters";
 import { ContinuarDeOndeParouCard } from "@/components/dashboard/SuggestionCard";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card } from "@/components/ui/Card";
-import { ProgressTrail } from "@/components/ui/ProgressTrail";
-import { AreaBar } from "@/components/ui/AreaBar";
 import { Topbar } from "@/components/layout/Topbar";
+import { DesempenhoPorAreaChart } from "@/components/dashboard/DesempenhoPorAreaChart";
+import { EvolucaoChart } from "@/components/dashboard/EvolucaoChart";
+import type { PeriodoEvolucao } from "@/components/dashboard/EvolucaoChart";
+import { PERIODOS_EVOLUCAO } from "@/components/dashboard/EvolucaoChart";
 import { useAuth } from "@/contexts/AuthContext";
 import { lerUltimaAtividade } from "@/lib/continuarDeOndeParou";
-import { getEstatisticasAluno } from "@/services/questionsService";
-import type { EstatisticasAluno } from "@/services/questionsService";
+import { getEstatisticasAluno, getEvolucaoAluno } from "@/services/questionsService";
+import type { EstatisticasAluno, PontoEvolucao } from "@/services/questionsService";
 import { listarMinhasRedacoes } from "@/services/essaysService";
-import type { AreaEnem } from "@/types/database.types";
 
 function IconCheck() {
   return (
@@ -51,6 +51,8 @@ function IconRedacao() {
 export function DashboardPage() {
   const { profile } = useAuth();
   const [estatisticas, setEstatisticas] = useState<EstatisticasAluno | null>(null);
+  const [evolucao, setEvolucao] = useState<PontoEvolucao[]>([]);
+  const [dias, setDias] = useState<PeriodoEvolucao>(30);
   const [redacoesEnviadas, setRedacoesEnviadas] = useState<number | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -60,10 +62,11 @@ export function DashboardPage() {
     let ativo = true;
     setCarregando(true);
 
-    Promise.all([getEstatisticasAluno(profile.id), listarMinhasRedacoes(profile.id)])
-      .then(([stats, redacoes]) => {
+    Promise.all([getEstatisticasAluno(profile.id), getEvolucaoAluno(profile.id), listarMinhasRedacoes(profile.id)])
+      .then(([stats, evolucaoAluno, redacoes]) => {
         if (!ativo) return;
         setEstatisticas(stats);
+        setEvolucao(evolucaoAluno);
         setRedacoesEnviadas(redacoes.length);
       })
       .catch((erro) => console.error("[navehub] erro ao carregar dashboard:", erro))
@@ -79,7 +82,6 @@ export function DashboardPage() {
   if (!profile) return null;
 
   const ultimaAtividade = lerUltimaAtividade(profile.id);
-  const areas = Object.keys(ROTULOS_AREA) as AreaEnem[];
 
   return (
     <>
@@ -103,26 +105,33 @@ export function DashboardPage() {
               <h2 className="font-display text-base font-semibold text-ink">Seu desempenho</h2>
             </div>
 
-            <div className="mb-6">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Rumo à sua meta</p>
-              <ProgressTrail atual={estatisticas?.questoesFeitas ?? 0} meta={profile.meta_questoes} />
-            </div>
-
-            {carregando ? (
-              <p className="text-sm text-muted">Carregando desempenho…</p>
-            ) : areas.every((area) => !estatisticas?.desempenhoPorArea[area]) ? (
-              <p className="text-sm text-muted">Responda algumas questões para ver seu desempenho por área.</p>
-            ) : (
-              <div className="space-y-3">
-                {areas.map((area) => (
-                  <AreaBar key={area} label={ROTULOS_AREA[area]} percentual={estatisticas?.desempenhoPorArea[area]?.percentual ?? 0} />
-                ))}
-              </div>
-            )}
+            <DesempenhoPorAreaChart desempenho={estatisticas?.desempenhoPorArea ?? {}} carregando={carregando} />
           </Card>
 
           <ContinuarDeOndeParouCard atividade={ultimaAtividade} />
         </div>
+
+        <Card>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-base font-semibold text-ink">Evolução</h2>
+            <div className="flex rounded-control border border-line bg-canvas p-0.5 text-xs">
+              {PERIODOS_EVOLUCAO.map((periodo) => (
+                <button
+                  key={periodo}
+                  type="button"
+                  onClick={() => setDias(periodo)}
+                  className={`rounded-control px-3 py-1.5 font-medium transition-colors ${
+                    periodo === dias ? "bg-nave-black text-white" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {periodo} dias
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <EvolucaoChart dados={evolucao} dias={dias} carregando={carregando} />
+        </Card>
       </div>
     </>
   );
