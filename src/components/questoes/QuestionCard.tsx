@@ -112,7 +112,10 @@ export function QuestionCard({
               disabled={selecionada !== null || salvando}
               aria-pressed={selecionada === alternativa.letra}
               className={cn(
-                "flex w-full items-start gap-3 rounded-control border px-4 py-3 text-left text-sm transition-colors",
+                // Com imagem, empilha o conteúdo (texto em cima, imagem abaixo);
+                // sem imagem, mantém o layout horizontal atual.
+                "flex w-full gap-3 rounded-control border px-4 py-3 text-left text-sm transition-colors",
+                alternativa.arquivo ? "flex-col" : "items-start",
                 "disabled:cursor-default",
                 !mostrarResultado &&
                   "border-line hover:border-nave-yellow-strong",
@@ -133,6 +136,13 @@ export function QuestionCard({
                 {alternativa.letra})
               </span>
               <span className="text-ink">{alternativa.texto}</span>
+              {alternativa.arquivo && (
+                <img
+                  src={alternativa.arquivo}
+                  alt={`Imagem da alternativa ${alternativa.letra}`}
+                  className="max-w-md rounded-control border border-line"
+                />
+              )}
               {mostrarResultado && (
                 <span className="sr-only">
                   {éCorreta
