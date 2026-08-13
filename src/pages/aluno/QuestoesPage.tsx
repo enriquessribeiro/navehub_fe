@@ -6,13 +6,18 @@ import { Card } from "@/components/ui/Card";
 import { Topbar } from "@/components/layout/Topbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { salvarUltimaAtividade } from "@/lib/continuarDeOndeParou";
-import { listarAnosDisponiveis, listQuestions, registrarTentativa } from "@/services/questionsService";
-import type { AreaEnem, QuestionRow } from "@/types/database.types";
+import {
+  listarAnosDisponiveis,
+  listQuestions,
+  mapearAreaFiltro,
+  registrarTentativa,
+  type AreaFiltro,
+} from "@/services/questionsService";
+import type { QuestionRow } from "@/types/database.types";
 
 interface EstadoNavegacao {
-  area?: AreaEnem | null;
+  area?: AreaFiltro | null;
   ano?: number | null;
-  idioma?: string | null;
 }
 
 /** Questões por requisição. O aluno continua vendo "uma de cada vez", mas a
@@ -26,12 +31,13 @@ export function QuestoesPage() {
   const estadoInicial = location.state as EstadoNavegacao | null;
 
   const [ano, setAno] = useState<number | null>(estadoInicial?.ano ?? null);
-  const [area, setArea] = useState<AreaEnem | null>(estadoInicial?.area ?? null);
-  const [idioma, setIdioma] = useState<string | null>(estadoInicial?.idioma ?? "portugues");
+  const [area, setArea] = useState<AreaFiltro | null>(estadoInicial?.area ?? null);
 
   const [questoes, setQuestoes] = useState<QuestionRow[]>([]);
   const [total, setTotal] = useState(0);
   const [indice, setIndice] = useState(0);
+  /** Quantas páginas do servidor já foram buscadas para o buffer atual. */
+  const [paginasBuscadas, setPaginasBuscadas] = useState(1);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[] | null>(null);
@@ -39,8 +45,16 @@ export function QuestoesPage() {
   const buscarPrimeiraPagina = useCallback(async () => {
     setCarregando(true);
     setErro(null);
+    setPaginasBuscadas(1);
     try {
-      const resultado = await listQuestions({ ano, area, idioma, pagina: 1, porPagina: LOTE_POR_PAGINA });
+      const areaConsulta = mapearAreaFiltro(area);
+      const resultado = await listQuestions({
+        ano,
+        area: areaConsulta.area,
+        idioma: areaConsulta.idioma,
+        pagina: 1,
+        porPagina: LOTE_POR_PAGINA,
+      });
       setQuestoes(resultado.questoes);
       setTotal(resultado.total);
       setIndice(0);
@@ -52,7 +66,7 @@ export function QuestoesPage() {
     } finally {
       setCarregando(false);
     }
-  }, [ano, area, idioma]);
+  }, [ano, area]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -65,21 +79,32 @@ export function QuestoesPage() {
 
   function lidarComBusca() {
     if (profile) {
-      salvarUltimaAtividade(profile.id, { area, ano, idioma });
+      salvarUltimaAtividade(profile.id, { area, ano });
     }
     void buscarPrimeiraPagina();
   }
 
   async function buscarProximaPagina() {
-    // Próxima página do servidor baseada no tamanho do buffer acumulado.
-    const proximaPagina = Math.floor(questoes.length / LOTE_POR_PAGINA) + 1;
+    // Próxima página derivada do CONTADOR de páginas já buscadas — antes era
+    // calculada a partir do tamanho do buffer, o que fazia a última página
+    // (parcial, ex.: 5 questões de um total de 45) ser rebuscada e duplicada
+    // no buffer. Ex.: com 45 questões, floor(45/20)+1 = 3 rebuscava a página 3.
+    const proximaPagina = paginasBuscadas + 1;
     setCarregando(true);
     setErro(null);
     try {
-      const resultado = await listQuestions({ ano, area, idioma, pagina: proximaPagina, porPagina: LOTE_POR_PAGINA });
+      const areaConsulta = mapearAreaFiltro(area);
+      const resultado = await listQuestions({
+        ano,
+        area: areaConsulta.area,
+        idioma: areaConsulta.idioma,
+        pagina: proximaPagina,
+        porPagina: LOTE_POR_PAGINA,
+      });
       setQuestoes((atual) => [...atual, ...resultado.questoes]);
       setTotal(resultado.total);
       if (resultado.questoes.length > 0) {
+        setPaginasBuscadas(proximaPagina);
         setIndice((atual) => atual + 1);
       }
     } catch (erroBusca) {
@@ -120,11 +145,9 @@ export function QuestoesPage() {
           <QuestionFilters
             ano={ano}
             area={area}
-            idioma={idioma}
             anos={anosDisponiveis ?? undefined}
             onChangeAno={setAno}
             onChangeArea={setArea}
-            onChangeIdioma={setIdioma}
             onBuscar={lidarComBusca}
             carregando={carregando}
           />

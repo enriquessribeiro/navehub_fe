@@ -1,4 +1,4 @@
-import type { AreaEnem } from "@/types/database.types";
+import type { AreaFiltro } from "@/services/questionsService";
 
 /**
  * "Continuar de onde parou" — decisão registrada no planejamento: em vez de
@@ -8,9 +8,9 @@ import type { AreaEnem } from "@/types/database.types";
  * sem tabela nova no banco.
  */
 export interface UltimaAtividade {
-  area: AreaEnem | null;
+  /** Área filtrada — inclui os idiomas extras ("ingles"/"espanhol"). */
+  area: AreaFiltro | null;
   ano: number | null;
-  idioma: string | null;
   atualizadoEm: string;
 }
 
