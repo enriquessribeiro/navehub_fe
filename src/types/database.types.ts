@@ -19,13 +19,18 @@ export type AreaEnem = "matematica" | "linguagens" | "ciencias_humanas" | "cienc
 
 export type StatusRedacao = "pendente" | "corrigida";
 
-export interface ProfileRow {
+/**
+ * As tabelas são `type` (e não `interface`) de propósito: interfaces não têm
+ * index signature implícita, então `Table["Row"] extends Record<string, unknown>`
+ * falha e o SDK (`GenericSchema`) resolve o schema para `any`.
+ */
+export type ProfileRow = {
   id: string;
   nome: string;
   papel: Papel;
   meta_questoes: number;
   created_at: string;
-}
+};
 
 export interface AlternativaJson {
   letra: "A" | "B" | "C" | "D" | "E";
@@ -34,7 +39,7 @@ export interface AlternativaJson {
   correta: boolean;
 }
 
-export interface QuestionRow {
+export type QuestionRow = {
   id: string;
   /** Chave natural `"{ano}-{index}-{idioma}"` (idioma em português/espanhol/
    *  inglês) — ver migração 0005 e o `enemSync.service` no backend. */
@@ -54,7 +59,7 @@ export interface QuestionRow {
   atualizado_em: string;
 }
 
-export interface EssayRow {
+export type EssayRow = {
   id: string;
   aluno_id: string;
   professor_id: string | null;
@@ -67,7 +72,7 @@ export interface EssayRow {
   corrigida_em: string | null;
 }
 
-export interface QuestionAttemptRow {
+export type QuestionAttemptRow = {
   id: string;
   aluno_id: string;
   question_id: string;
@@ -91,22 +96,36 @@ export interface Database {
         Row: ProfileRow;
         Insert: Partial<ProfileRow> & Pick<ProfileRow, "id" | "nome">;
         Update: Partial<ProfileRow>;
+        Relationships: [];
       };
       questions: {
         Row: QuestionRow;
         Insert: Partial<QuestionRow>;
         Update: Partial<QuestionRow>;
+        Relationships: [];
       };
       essays: {
         Row: EssayRow;
         Insert: Partial<EssayRow> & Pick<EssayRow, "aluno_id" | "tema" | "texto">;
         Update: Partial<EssayRow>;
+        Relationships: [];
       };
       question_attempts: {
         Row: QuestionAttemptRow;
         Insert: Partial<QuestionAttemptRow> &
           Pick<QuestionAttemptRow, "aluno_id" | "question_id" | "resposta_dada" | "correta">;
         Update: Partial<QuestionAttemptRow>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: {
+      /** Ver supabase/sql/0006_anos_distintos.sql: devolve os ANOS distintos
+       *  de prova. RPC evita o teto de 1.000 linhas/requisição do PostgREST
+       *  (o select de anos por `select ano` truncava em 2018). */
+      listar_anos_distintos: {
+        Args: Record<string, never>;
+        Returns: { ano: number }[];
       };
     };
   };

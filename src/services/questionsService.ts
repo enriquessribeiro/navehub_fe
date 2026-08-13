@@ -18,7 +18,10 @@ export type AreaFiltro = AreaEnem | "ingles" | "espanhol";
  *   mostrando só as de português; as de idioma ficam na própria opção);
  * - vazio ("Todas") -> sem área e sem idioma (todas as línguas).
  */
-export function mapearAreaFiltro(filtro: AreaFiltro | null): { area: AreaEnem | null; idioma: string | null } {
+export function mapearAreaFiltro(filtro: AreaFiltro | null): {
+  area: AreaEnem | null;
+  idioma: string | null;
+} {
   if (filtro === "ingles" || filtro === "espanhol") {
     return { area: "linguagens", idioma: filtro };
   }
@@ -46,27 +49,29 @@ export interface ResultadoQuestoes {
  * justificar, trocar por uma função/RPC de anos distintos é uma melhoria
  * simples.
  */
-export const ANOS_DISPONIVEIS = Array.from({ length: 2023 - 2009 + 1 }, (_, i) => 2023 - i);
+export const ANOS_DISPONIVEIS = Array.from(
+  { length: 2023 - 2009 + 1 },
+  (_, i) => 2023 - i,
+);
 
 /** Anos que realmente existem no banco (sem hardcode), consultados uma vez
- *  por sessão. Em caso de erro, cai no fallback estático `ANOS_DISPONIVEIS`
- *  para nunca bloquear a tela de filtros. */
+ *  por sessão. Usa o RPC `listar_anos_distintos` (supabase/sql/0006) — não
+ *  um `select ano` com limit alto: o PostgREST do Supabase limita a resposta
+ *  a 1.000 linhas/requisição, então `select ano ... limit 3000` truncava os
+ *  anos antigos (o corte começava em 2018) mesmo depois de aumentar o limit.
+ *  Em caso de erro, cai no fallback estático `ANOS_DISPONIVEIS`. */
 let anosDisponiveisCache: number[] | null = null;
 
 export async function listarAnosDisponiveis(): Promise<number[]> {
   if (anosDisponiveisCache) return anosDisponiveisCache;
 
   try {
-    const { data, error } = await supabase
-      .from("questions")
-      .select("ano")
-      .order("ano", { ascending: false })
-      .limit(1000);
+    const { data, error } = await supabase.rpc("listar_anos_distintos");
 
     if (error) {
       anosDisponiveisCache = ANOS_DISPONIVEIS;
     } else {
-      const anos = [...new Set((data ?? []).map((linha) => linha.ano))].sort((a, b) => b - a);
+      const anos = (data ?? []).map((linha) => linha.ano);
       anosDisponiveisCache = anos.length > 0 ? anos : ANOS_DISPONIVEIS;
     }
   } catch {
@@ -76,7 +81,9 @@ export async function listarAnosDisponiveis(): Promise<number[]> {
   return anosDisponiveisCache;
 }
 
-export async function listQuestions(filtros: FiltrosQuestoes): Promise<ResultadoQuestoes> {
+export async function listQuestions(
+  filtros: FiltrosQuestoes,
+): Promise<ResultadoQuestoes> {
   let query = supabase.from("questions").select("*", { count: "exact" });
 
   if (filtros.ano) {
@@ -92,7 +99,9 @@ export async function listQuestions(filtros: FiltrosQuestoes): Promise<Resultado
   const inicio = (filtros.pagina - 1) * filtros.porPagina;
   const fim = inicio + filtros.porPagina - 1;
 
-  const { data, error, count } = await query.order("ano", { ascending: false }).range(inicio, fim);
+  const { data, error, count } = await query
+    .order("ano", { ascending: false })
+    .range(inicio, fim);
 
   if (error) {
     throw new Error(`Não foi possível carregar as questões: ${error.message}`);
@@ -107,17 +116,15 @@ export async function registrarTentativa(params: {
   respostaDada: "A" | "B" | "C" | "D" | "E";
   correta: boolean;
 }): Promise<void> {
-  const { error } = await supabase
-    .from("question_attempts")
-    .upsert(
-      {
-        aluno_id: params.alunoId,
-        question_id: params.questionId,
-        resposta_dada: params.respostaDada,
-        correta: params.correta,
-      },
-      { onConflict: "aluno_id,question_id" }
-    );
+  const { error } = await supabase.from("question_attempts").upsert(
+    {
+      aluno_id: params.alunoId,
+      question_id: params.questionId,
+      resposta_dada: params.respostaDada,
+      correta: params.correta,
+    },
+    { onConflict: "aluno_id,question_id" },
+  );
 
   if (error) {
     throw new Error(`Não foi possível salvar sua resposta: ${error.message}`);
@@ -127,17 +134,23 @@ export async function registrarTentativa(params: {
 export interface EstatisticasAluno {
   questoesFeitas: number;
   percentualAcerto: number;
-  desempenhoPorArea: Partial<Record<AreaEnem, { total: number; corretas: number; percentual: number }>>;
+  desempenhoPorArea: Partial<
+    Record<AreaEnem, { total: number; corretas: number; percentual: number }>
+  >;
 }
 
-export async function getEstatisticasAluno(alunoId: string): Promise<EstatisticasAluno> {
+export async function getEstatisticasAluno(
+  alunoId: string,
+): Promise<EstatisticasAluno> {
   const { data, error } = await supabase
     .from("question_attempts")
     .select("correta, question:questions(area)")
     .eq("aluno_id", alunoId);
 
   if (error) {
-    throw new Error(`Não foi possível carregar seu desempenho: ${error.message}`);
+    throw new Error(
+      `Não foi possível carregar seu desempenho: ${error.message}`,
+    );
   }
 
   // O tipo `Database` escrito à mão (ver src/types/database.types.ts) não
@@ -145,7 +158,10 @@ export async function getEstatisticasAluno(alunoId: string): Promise<Estatistica
   // inferir sozinho o formato do embed `question:questions(area)`. Tipamos
   // a linha explicitamente aqui, já que sabemos o formato real da resposta
   // do PostgREST para esse select.
-  const linhas = (data ?? []) as unknown as Array<{ correta: boolean; question: { area: AreaEnem | null } | null }>;
+  const linhas = (data ?? []) as unknown as Array<{
+    correta: boolean;
+    question: { area: AreaEnem | null } | null;
+  }>;
   const desempenhoPorArea: EstatisticasAluno["desempenhoPorArea"] = {};
   let corretas = 0;
 
@@ -155,7 +171,11 @@ export async function getEstatisticasAluno(alunoId: string): Promise<Estatistica
     const area = linha.question?.area;
     if (!area) continue;
 
-    const atual = desempenhoPorArea[area] ?? { total: 0, corretas: 0, percentual: 0 };
+    const atual = desempenhoPorArea[area] ?? {
+      total: 0,
+      corretas: 0,
+      percentual: 0,
+    };
     atual.total += 1;
     if (linha.correta) atual.corretas += 1;
     atual.percentual = Math.round((atual.corretas / atual.total) * 100);
@@ -164,7 +184,8 @@ export async function getEstatisticasAluno(alunoId: string): Promise<Estatistica
 
   return {
     questoesFeitas: linhas.length,
-    percentualAcerto: linhas.length > 0 ? Math.round((corretas / linhas.length) * 100) : 0,
+    percentualAcerto:
+      linhas.length > 0 ? Math.round((corretas / linhas.length) * 100) : 0,
     desempenhoPorArea,
   };
 }
@@ -185,7 +206,9 @@ export interface PontoEvolucao {
  * série completa uma única vez por sessão e o seletor de período só fatia
  * os dados no client, sem novas consultas.
  */
-export async function getEvolucaoAluno(alunoId: string): Promise<PontoEvolucao[]> {
+export async function getEvolucaoAluno(
+  alunoId: string,
+): Promise<PontoEvolucao[]> {
   const { data, error } = await supabase
     .from("question_attempts")
     .select("correta, respondida_em")
@@ -195,7 +218,10 @@ export async function getEvolucaoAluno(alunoId: string): Promise<PontoEvolucao[]
     throw new Error(`Não foi possível carregar sua evolução: ${error.message}`);
   }
 
-  const linhas = (data ?? []) as unknown as Array<{ correta: boolean; respondida_em: string | null }>;
+  const linhas = (data ?? []) as unknown as Array<{
+    correta: boolean;
+    respondida_em: string | null;
+  }>;
   const porDia = new Map<string, PontoEvolucao>();
 
   for (const linha of linhas) {
