@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/Button";
+import { chaveDiaLocal } from "@/lib/diaLocal";
 import type { PontoEvolucao } from "@/services/questionsService";
 
 export const PERIODOS_EVOLUCAO = [7, 30, 90] as const;
@@ -70,7 +71,9 @@ export function EvolucaoChart({ dados, dias, carregando = false }: EvolucaoChart
       const data = new Date(hoje);
       data.setHours(0, 0, 0, 0);
       data.setDate(data.getDate() - i);
-      const chaveDia = data.toISOString().slice(0, 10);
+      // Chave no fuso local (chaveDiaLocal) — antes usava toISOString()
+      // (UTC), o que deslocava "hoje" para o dia seguinte em fusos negativos.
+      const chaveDia = chaveDiaLocal(data);
       pontos.push({
         dia: chaveDia,
         feitas: porDia.get(chaveDia)?.feitas ?? 0,

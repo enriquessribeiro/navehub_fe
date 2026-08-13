@@ -1,5 +1,29 @@
 import { supabase } from "@/lib/supabaseClient";
+import { chaveDiaLocal } from "@/lib/diaLocal";
 import type { AreaEnem, QuestionRow } from "@/types/database.types";
+
+/**
+ * Área selecionável no filtro de questões. Além das 4 áreas reais do ENEM,
+ * inclui os idiomas estrangeiros: a API enem.dev usa o MESMO índice (ex.:
+ * 2023-1) para a questão em português, espanhol e inglês — são "a mesma"
+ * questão em línguas diferentes, então Inglês/Espanhol entram como opções de
+ * área (a query vira { area: "linguagens", idioma: "ingles"/"espanhol" }).
+ */
+export type AreaFiltro = AreaEnem | "ingles" | "espanhol";
+
+/**
+ * Traduz a seleção do filtro de área em (área real, idioma) para a query:
+ * - "ingles"/"espanhol" -> area=linguagens + idioma correspondente;
+ * - áreas reais -> a própria área + idioma=portugues (Linguagens continua
+ *   mostrando só as de português; as de idioma ficam na própria opção);
+ * - vazio ("Todas") -> sem área e sem idioma (todas as línguas).
+ */
+export function mapearAreaFiltro(filtro: AreaFiltro | null): { area: AreaEnem | null; idioma: string | null } {
+  if (filtro === "ingles" || filtro === "espanhol") {
+    return { area: "linguagens", idioma: filtro };
+  }
+  return { area: filtro, idioma: filtro ? "portugues" : null };
+}
 
 export interface FiltrosQuestoes {
   ano?: number | null;
@@ -177,7 +201,9 @@ export async function getEvolucaoAluno(alunoId: string): Promise<PontoEvolucao[]
   for (const linha of linhas) {
     if (!linha.respondida_em) continue;
 
-    const dia = linha.respondida_em.slice(0, 10);
+    // Dia no fuso local (chaveDiaLocal) em vez de fatiar o ISO cru (UTC) —
+    // sincronizado com o eixo do gráfico em EvolucaoChart.
+    const dia = chaveDiaLocal(new Date(linha.respondida_em));
     const ponto = porDia.get(dia) ?? { dia, feitas: 0, acertos: 0 };
     ponto.feitas += 1;
     if (linha.correta) ponto.acertos += 1;

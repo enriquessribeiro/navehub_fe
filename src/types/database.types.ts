@@ -36,6 +36,8 @@ export interface AlternativaJson {
 
 export interface QuestionRow {
   id: string;
+  /** Chave natural `"{ano}-{index}-{idioma}"` (idioma em português/espanhol/
+   *  inglês) — ver migração 0005 e o `enemSync.service` no backend. */
   enem_id: string;
   ano: number;
   area: AreaEnem | null;

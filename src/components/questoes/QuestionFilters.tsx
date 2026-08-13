@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { ANOS_DISPONIVEIS } from "@/services/questionsService";
+import type { AreaFiltro } from "@/services/questionsService";
 import type { AreaEnem } from "@/types/database.types";
 
 export const ROTULOS_AREA: Record<AreaEnem, string> = {
@@ -10,19 +11,18 @@ export const ROTULOS_AREA: Record<AreaEnem, string> = {
   ciencias_natureza: "Ciências da Natureza",
 };
 
-const OPCOES_IDIOMA: Array<{ valor: string; rotulo: string }> = [
-  { valor: "portugues", rotulo: "Português" },
-  { valor: "ingles", rotulo: "Inglês" },
-  { valor: "espanhol", rotulo: "Espanhol" },
-];
+/** Rótulo de cada opção do filtro de área (4 áreas reais + 2 idiomas). */
+const ROTULOS_AREA_FILTRO: Record<AreaFiltro, string> = {
+  ...ROTULOS_AREA,
+  ingles: "Inglês",
+  espanhol: "Espanhol",
+};
 
 interface QuestionFiltersProps {
   ano: number | null;
-  area: AreaEnem | null;
-  idioma: string | null;
+  area: AreaFiltro | null;
   onChangeAno: (valor: number | null) => void;
-  onChangeArea: (valor: AreaEnem | null) => void;
-  onChangeIdioma: (valor: string | null) => void;
+  onChangeArea: (valor: AreaFiltro | null) => void;
   onBuscar: () => void;
   carregando?: boolean;
   /** Anos vindos do banco; sem ele, usa a lista estática de fallback. */
@@ -32,10 +32,8 @@ interface QuestionFiltersProps {
 export function QuestionFilters({
   ano,
   area,
-  idioma,
   onChangeAno,
   onChangeArea,
-  onChangeIdioma,
   onBuscar,
   carregando,
   anos,
@@ -43,7 +41,7 @@ export function QuestionFilters({
   const listaAnos = anos ?? ANOS_DISPONIVEIS;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <Select
         label="Ano"
         value={ano ?? ""}
@@ -60,20 +58,12 @@ export function QuestionFilters({
       <Select
         label="Área"
         value={area ?? ""}
-        onChange={(e) => onChangeArea((e.target.value || null) as AreaEnem | null)}
+        onChange={(e) => onChangeArea((e.target.value || null) as AreaFiltro | null)}
       >
         <option value="">Todas</option>
-        {(Object.keys(ROTULOS_AREA) as AreaEnem[]).map((chave) => (
+        {(Object.keys(ROTULOS_AREA_FILTRO) as AreaFiltro[]).map((chave) => (
           <option key={chave} value={chave}>
-            {ROTULOS_AREA[chave]}
-          </option>
-        ))}
-      </Select>
-
-      <Select label="Idioma" value={idioma ?? "portugues"} onChange={(e) => onChangeIdioma(e.target.value)}>
-        {OPCOES_IDIOMA.map((opcao) => (
-          <option key={opcao.valor} value={opcao.valor}>
-            {opcao.rotulo}
+            {ROTULOS_AREA_FILTRO[chave]}
           </option>
         ))}
       </Select>
