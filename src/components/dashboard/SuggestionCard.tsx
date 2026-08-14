@@ -8,6 +8,8 @@ const ROTULOS_AREA: Record<string, string> = {
   linguagens: "Linguagens",
   ciencias_humanas: "Ciências Humanas",
   ciencias_natureza: "Ciências da Natureza",
+  ingles: "Inglês",
+  espanhol: "Espanhol",
 };
 
 interface ContinuarDeOndeParouCardProps {
@@ -35,7 +37,6 @@ export function ContinuarDeOndeParouCard({ atividade }: ContinuarDeOndeParouCard
   const partesFiltro = [
     atividade.area ? ROTULOS_AREA[atividade.area] : null,
     atividade.ano ? `ENEM ${atividade.ano}` : null,
-    atividade.idioma && atividade.idioma !== "portugues" ? atividade.idioma : null,
   ].filter(Boolean);
 
   return (
@@ -49,7 +50,7 @@ export function ContinuarDeOndeParouCard({ atividade }: ContinuarDeOndeParouCard
       </div>
       <Link
         to="/questoes"
-        state={{ area: atividade.area, ano: atividade.ano, idioma: atividade.idioma }}
+        state={{ area: atividade.area, ano: atividade.ano }}
       >
         <Button className="w-full">Continuar</Button>
       </Link>

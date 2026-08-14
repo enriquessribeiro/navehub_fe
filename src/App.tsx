@@ -40,9 +40,22 @@ function SemPerfil() {
  */
 function HomeRedirect() {
   const { profile, carregando } = useAuth();
-  if (carregando || !profile) {
-    return carregando ? null : <SemPerfil />;
+
+  // Enquanto o perfil não resolve, renderiza "Carregando…" (mesma postura do
+  // ProtectedRoute) — renderizar `null` aqui deixava a tela em branco caso o
+  // carregamento pendurasse (rede, banco pausado etc.).
+  if (carregando) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <p className="font-mono text-sm text-muted">Carregando…</p>
+      </div>
+    );
   }
+
+  if (!profile) {
+    return <SemPerfil />;
+  }
+
   return <Navigate to={profile.papel === "professor" ? "/redacao" : "/dashboard"} replace />;
 }
 

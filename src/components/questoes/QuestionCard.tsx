@@ -1,4 +1,6 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -7,6 +9,13 @@ import { ROTULOS_AREA } from "@/components/questoes/QuestionFilters";
 import type { AlternativaJson, QuestionRow } from "@/types/database.types";
 
 type Letra = AlternativaJson["letra"];
+
+/** URLs de imagem que já aparecem inline no enunciado (sintaxe `![](url)` do
+ *  Markdown) — as figuras não podem ser renderizadas de novo no rodapé. */
+function arquivosNaoReferenciadosNoEnunciado(questao: QuestionRow): string[] {
+  if (!questao.enunciado) return questao.arquivos;
+  return questao.arquivos.filter((url) => !questao.enunciado?.includes(url));
+}
 
 interface QuestionCardProps {
   questao: QuestionRow;
@@ -34,6 +43,8 @@ export function QuestionCard({
   const [revelada, setRevelada] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvamento, setErroSalvamento] = useState<string | null>(null);
+
+  const arquivosRodape = arquivosNaoReferenciadosNoEnunciado(questao);
 
   async function escolher(letra: Letra) {
     // resposta já registrada, ou salvando — não deixa trocar nem clicar 2x
@@ -75,18 +86,40 @@ export function QuestionCard({
 
       <div className="space-y-3">
         {questao.enunciado && (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+          // A API enem.dev entrega o enunciado em Markdown (figuras `![](url)`
+          // inline no meio do texto). Renderizado como texto puro, o markdown
+          // aparecia cru ("link" da figura) e a imagem só vinha no rodapé.
+          <ReactMarkdown
+            remarkPlugins={[remarkBreaks]}
+            components={{
+              p: ({ children }) => (
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+                  {children}
+                </p>
+              ),
+              img: ({ src, alt }) => (
+                <img
+                  src={src}
+                  alt={alt ?? "Figura da questão"}
+                  className="max-w-full max-h-96 rounded-control border border-line"
+                />
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-ink">{children}</strong>
+              ),
+            }}
+          >
             {questao.enunciado}
-          </p>
+          </ReactMarkdown>
         )}
-        {questao.arquivos.length > 0 && (
+        {arquivosRodape.length > 0 && (
           <div className="flex flex-col gap-3">
-            {questao.arquivos.map((url) => (
+            {arquivosRodape.map((url) => (
               <img
                 key={url}
                 src={url}
                 alt="Figura de apoio da questão"
-                className="max-w-md rounded-control border border-line "
+                className="max-w-md max-h-96 rounded-control border border-line"
               />
             ))}
           </div>
@@ -140,7 +173,7 @@ export function QuestionCard({
                 <img
                   src={alternativa.arquivo}
                   alt={`Imagem da alternativa ${alternativa.letra}`}
-                  className="max-w-md rounded-control border border-line"
+                  className="max-w-xs rounded-control border border-line"
                 />
               )}
               {mostrarResultado && (
