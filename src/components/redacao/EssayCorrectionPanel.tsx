@@ -101,7 +101,7 @@ export function EssayCorrectionPanel({ redacao, onFechar, onSalvar }: EssayCorre
         </div>
 
         <div className="rounded-control bg-canvas p-4">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{redacao.texto}</p>
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{redacao.texto}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[140px_1fr]">

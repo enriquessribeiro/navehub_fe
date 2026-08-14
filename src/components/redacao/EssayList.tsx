@@ -47,7 +47,7 @@ export function EssayList({ redacoes, mostrarNomeAluno, vazio, onCorrigir }: Ess
                 <p className="text-sm font-semibold text-ink">Nota: {redacao.nota}/1000</p>
                 {redacao.professor && <p className="text-xs text-muted">Corrigida por {redacao.professor.nome}</p>}
               </div>
-              {redacao.feedback && <p className="mt-2 whitespace-pre-wrap text-sm text-ink">{redacao.feedback}</p>}
+              {redacao.feedback && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink">{redacao.feedback}</p>}
             </div>
           )}
 
