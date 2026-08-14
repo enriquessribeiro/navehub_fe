@@ -50,7 +50,7 @@ export function ContinuarDeOndeParouCard({ atividade }: ContinuarDeOndeParouCard
       </div>
       <Link
         to="/questoes"
-        state={{ area: atividade.area, ano: atividade.ano }}
+        state={{ area: atividade.area, ano: atividade.ano, resolucao: atividade.resolucao }}
       >
         <Button className="w-full">Continuar</Button>
       </Link>

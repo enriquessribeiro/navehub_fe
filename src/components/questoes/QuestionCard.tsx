@@ -29,6 +29,10 @@ interface QuestionCardProps {
   }) => Promise<void>;
   onProxima: () => void;
   temProxima: boolean;
+  /** Modo revisão: mostra a resposta já dada (destacada) + gabarito, sem
+   *  permitir responder de novo — preserva o histórico da tentativa. */
+  modoRevisao?: boolean;
+  respostaAnterior?: Letra | null;
 }
 
 export function QuestionCard({
@@ -38,17 +42,22 @@ export function QuestionCard({
   onResponder,
   onProxima,
   temProxima,
+  modoRevisao = false,
+  respostaAnterior = null,
 }: QuestionCardProps) {
-  const [selecionada, setSelecionada] = useState<Letra | null>(null);
-  const [revelada, setRevelada] = useState(false);
+  const [selecionada, setSelecionada] = useState<Letra | null>(
+    modoRevisao ? respostaAnterior : null,
+  );
+  const [revelada, setRevelada] = useState(modoRevisao);
   const [salvando, setSalvando] = useState(false);
   const [erroSalvamento, setErroSalvamento] = useState<string | null>(null);
 
   const arquivosRodape = arquivosNaoReferenciadosNoEnunciado(questao);
 
   async function escolher(letra: Letra) {
-    // resposta já registrada, ou salvando — não deixa trocar nem clicar 2x
-    if (selecionada !== null || salvando) return;
+    // em revisão não se responde; resposta já registrada, ou salvando — não
+    // deixa trocar nem clicar 2x
+    if (modoRevisao || selecionada !== null || salvando) return;
     setSalvando(true);
     setErroSalvamento(null);
     try {
@@ -78,6 +87,7 @@ export function QuestionCard({
           {questao.area && (
             <Badge tone="neutral">{ROTULOS_AREA[questao.area]}</Badge>
           )}
+          {modoRevisao && <Badge tone="neutral">Revisão</Badge>}
         </div>
         <span className="font-mono text-xs text-muted">
           Questão {numero} de {total}
@@ -142,7 +152,7 @@ export function QuestionCard({
               key={alternativa.letra}
               type="button"
               onClick={() => void escolher(alternativa.letra)}
-              disabled={selecionada !== null || salvando}
+              disabled={modoRevisao || selecionada !== null || salvando}
               aria-pressed={selecionada === alternativa.letra}
               className={cn(
                 // Com imagem, empilha o conteúdo (texto em cima, imagem abaixo);
@@ -197,15 +207,17 @@ export function QuestionCard({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <Button
-          variant="ghost"
-          onClick={() => setRevelada(true)}
-          disabled={!selecionada}
-        >
-          Ver gabarito
-        </Button>
+        {!modoRevisao && (
+          <Button
+            variant="ghost"
+            onClick={() => setRevelada(true)}
+            disabled={!selecionada}
+          >
+            Ver gabarito
+          </Button>
+        )}
         <Button onClick={onProxima} disabled={!temProxima || salvando}>
-          Próxima questão →
+          {modoRevisao ? "Próxima respondida →" : "Próxima questão →"}
         </Button>
       </div>
     </Card>

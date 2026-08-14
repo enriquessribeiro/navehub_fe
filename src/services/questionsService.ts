@@ -83,6 +83,7 @@ export async function listarAnosDisponiveis(): Promise<number[]> {
 
 export async function listQuestions(
   filtros: FiltrosQuestoes,
+  opcoes?: { excluirIds?: string[] },
 ): Promise<ResultadoQuestoes> {
   let query = supabase.from("questions").select("*", { count: "exact" });
 
@@ -94,6 +95,9 @@ export async function listQuestions(
   }
   if (filtros.idioma) {
     query = query.eq("idioma", filtros.idioma);
+  }
+  if (opcoes?.excluirIds && opcoes.excluirIds.length > 0) {
+    query = query.not("id", "in", `(${opcoes.excluirIds.join(",")})`);
   }
 
   const inicio = (filtros.pagina - 1) * filtros.porPagina;
@@ -122,6 +126,7 @@ export async function registrarTentativa(params: {
       question_id: params.questionId,
       resposta_dada: params.respostaDada,
       correta: params.correta,
+      respondida_em: new Date().toISOString(),
     },
     { onConflict: "aluno_id,question_id" },
   );
@@ -129,6 +134,86 @@ export async function registrarTentativa(params: {
   if (error) {
     throw new Error(`Não foi possível salvar sua resposta: ${error.message}`);
   }
+}
+
+export async function listarIdsQuestoesRespondidas(
+  alunoId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("question_attempts")
+    .select("question_id")
+    .eq("aluno_id", alunoId);
+
+  if (error) {
+    throw new Error(
+      `Não foi possível carregar as questões respondidas: ${error.message}`,
+    );
+  }
+
+  return (data ?? []).map((linha) => linha.question_id);
+}
+
+export interface QuestaoRespondida {
+  questao: QuestionRow;
+  /** Resposta que o aluno deu na última tentativa. */
+  respostaDada: "A" | "B" | "C" | "D" | "E";
+  correta: boolean;
+}
+
+/**
+ * Questões que o aluno já respondeu (para revisão), com a última resposta
+ * dada e o acerto. Busca via `question_attempts` com embed da questão (mesmo
+ * padrão do dashboard), filtrando por ano/área/idioma da questão embutida e
+ * ordenando da mais recente para a mais antiga.
+ */
+export async function listarQuestoesRespondidas(
+  alunoId: string,
+  filtros: FiltrosQuestoes,
+): Promise<{ questoes: QuestaoRespondida[]; total: number }> {
+  let query = supabase
+    .from("question_attempts")
+    .select("resposta_dada, correta, question:questions(*)")
+    .eq("aluno_id", alunoId);
+
+  if (filtros.ano) {
+    query = query.eq("question.ano", filtros.ano);
+  }
+  if (filtros.area) {
+    query = query.eq("question.area", filtros.area);
+  }
+  if (filtros.idioma) {
+    query = query.eq("question.idioma", filtros.idioma);
+  }
+
+  const inicio = (filtros.pagina - 1) * filtros.porPagina;
+  const fim = inicio + filtros.porPagina - 1;
+
+  const { data, error, count } = await query
+    .order("respondida_em", { ascending: false })
+    .range(inicio, fim);
+
+  if (error) {
+    throw new Error(
+      `Não foi possível carregar as questões resolvidas: ${error.message}`,
+    );
+  }
+
+  const linhas = (data ?? []) as unknown as Array<{
+    resposta_dada: "A" | "B" | "C" | "D" | "E";
+    correta: boolean;
+    question: QuestionRow | null;
+  }>;
+
+  return {
+    questoes: linhas
+      .filter((linha) => linha.question !== null)
+      .map((linha) => ({
+        questao: linha.question as QuestionRow,
+        respostaDada: linha.resposta_dada,
+        correta: linha.correta,
+      })),
+    total: count ?? 0,
+  };
 }
 
 export interface EstatisticasAluno {

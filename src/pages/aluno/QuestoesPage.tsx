@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { QuestionCard } from "@/components/questoes/QuestionCard";
 import { QuestionFilters } from "@/components/questoes/QuestionFilters";
 import { Card } from "@/components/ui/Card";
 import { Topbar } from "@/components/layout/Topbar";
+import { cn } from "@/lib/cn";
 import { useAuth } from "@/contexts/AuthContext";
 import { salvarUltimaAtividade } from "@/lib/continuarDeOndeParou";
 import {
   listarAnosDisponiveis,
+  listarIdsQuestoesRespondidas,
+  listarQuestoesRespondidas,
   listQuestions,
   mapearAreaFiltro,
   registrarTentativa,
@@ -18,12 +21,30 @@ import type { QuestionRow } from "@/types/database.types";
 interface EstadoNavegacao {
   area?: AreaFiltro | null;
   ano?: number | null;
+  resolucao?: FiltroResolucao | null;
 }
+
+/** Filtro de situação: todas as questões, só as não respondidas ou só as
+ *  respondidas (revisão). */
+type FiltroResolucao = "todas" | "nao_respondidas" | "respondidas";
+
+const OPCOES_RESOLUCAO: Array<{ chave: FiltroResolucao; rotulo: string }> = [
+  { chave: "todas", rotulo: "Todas" },
+  { chave: "nao_respondidas", rotulo: "Não respondidas" },
+  { chave: "respondidas", rotulo: "Respondidas" },
+];
 
 /** Questões por requisição. O aluno continua vendo "uma de cada vez", mas a
  *  paginação vai em lote: navegar entre questões do mesmo lote não faz ida
  *  ao banco, e o `count` exato só acontece quando um lote esgota. */
 const LOTE_POR_PAGINA = 20;
+
+/** Item do buffer de navegação: a questão + (no modo revisão) a resposta que
+ *  o aluno deu e se acertou. */
+interface QuestaoNoBuffer {
+  questao: QuestionRow;
+  respostaDada?: "A" | "B" | "C" | "D" | "E";
+}
 
 export function QuestoesPage() {
   const { profile } = useAuth();
@@ -32,8 +53,11 @@ export function QuestoesPage() {
 
   const [ano, setAno] = useState<number | null>(estadoInicial?.ano ?? null);
   const [area, setArea] = useState<AreaFiltro | null>(estadoInicial?.area ?? null);
+  const [filtroResolucao, setFiltroResolucao] = useState<FiltroResolucao>(
+    estadoInicial?.resolucao ?? "todas",
+  );
 
-  const [questoes, setQuestoes] = useState<QuestionRow[]>([]);
+  const [questoes, setQuestoes] = useState<QuestaoNoBuffer[]>([]);
   const [total, setTotal] = useState(0);
   const [indice, setIndice] = useState(0);
   /** Quantas páginas do servidor já foram buscadas para o buffer atual. */
@@ -42,35 +66,70 @@ export function QuestoesPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[] | null>(null);
 
-  const buscarPrimeiraPagina = useCallback(async () => {
+  /** Sequência das buscas disparadas — respostas que chegam fora de ordem
+   *  (toggle rápido entre modos) são descartadas, evitando buffer misturado. */
+  const sequenciaBusca = useRef(0);
+
+  /** Busca o buffer inicial (página 1) de acordo com o filtro de resolução. */
+  const buscarPrimeiraPagina = useCallback(async (resolucao: FiltroResolucao) => {
+    const sequencia = ++sequenciaBusca.current;
     setCarregando(true);
     setErro(null);
     setPaginasBuscadas(1);
     try {
       const areaConsulta = mapearAreaFiltro(area);
-      const resultado = await listQuestions({
+      const filtros = {
         ano,
         area: areaConsulta.area,
         idioma: areaConsulta.idioma,
         pagina: 1,
         porPagina: LOTE_POR_PAGINA,
-      });
+      };
+
+      let resultado;
+      if (resolucao === "respondidas" && profile) {
+        const respondidas = await listarQuestoesRespondidas(profile.id, filtros);
+        resultado = {
+          questoes: respondidas.questoes.map((item) => ({
+            questao: item.questao,
+            respostaDada: item.respostaDada,
+          })),
+          total: respondidas.total,
+        };
+      } else {
+        const excluirIds =
+          resolucao === "nao_respondidas" && profile
+            ? await listarIdsQuestoesRespondidas(profile.id)
+            : undefined;
+        const todas = await listQuestions(filtros, { excluirIds });
+        resultado = {
+          questoes: todas.questoes.map((questao) => ({ questao })),
+          total: todas.total,
+        };
+      }
+
+      // Uma busca mais nova já foi disparada? Esta resposta é obsoleta.
+      if (sequencia !== sequenciaBusca.current) return;
+
       setQuestoes(resultado.questoes);
       setTotal(resultado.total);
       setIndice(0);
     } catch (erroBusca) {
+      if (sequencia !== sequenciaBusca.current) return;
       setErro(erroBusca instanceof Error ? erroBusca.message : "Não foi possível buscar as questões.");
       setQuestoes([]);
       setTotal(0);
       setIndice(0);
     } finally {
-      setCarregando(false);
+      if (sequencia === sequenciaBusca.current) {
+        setCarregando(false);
+      }
     }
-  }, [ano, area]);
+  }, [ano, area, profile]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    void buscarPrimeiraPagina();
+    void buscarPrimeiraPagina(filtroResolucao);
   }, []);
 
   useEffect(() => {
@@ -79,9 +138,9 @@ export function QuestoesPage() {
 
   function lidarComBusca() {
     if (profile) {
-      salvarUltimaAtividade(profile.id, { area, ano });
+      salvarUltimaAtividade(profile.id, { area, ano, resolucao: filtroResolucao });
     }
-    void buscarPrimeiraPagina();
+    void buscarPrimeiraPagina(filtroResolucao);
   }
 
   async function buscarProximaPagina() {
@@ -89,28 +148,56 @@ export function QuestoesPage() {
     // calculada a partir do tamanho do buffer, o que fazia a última página
     // (parcial, ex.: 5 questões de um total de 45) ser rebuscada e duplicada
     // no buffer. Ex.: com 45 questões, floor(45/20)+1 = 3 rebuscava a página 3.
+    // Se o aluno trocou o filtro no meio (buscarPrimeiraPagina disparada), a
+    // resposta desta busca é obsoleta — descarta.
+    const sequencia = sequenciaBusca.current;
     const proximaPagina = paginasBuscadas + 1;
     setCarregando(true);
     setErro(null);
     try {
       const areaConsulta = mapearAreaFiltro(area);
-      const resultado = await listQuestions({
+      const filtros = {
         ano,
         area: areaConsulta.area,
         idioma: areaConsulta.idioma,
         pagina: proximaPagina,
         porPagina: LOTE_POR_PAGINA,
-      });
-      setQuestoes((atual) => [...atual, ...resultado.questoes]);
-      setTotal(resultado.total);
-      if (resultado.questoes.length > 0) {
+      };
+
+      let novosItens: QuestaoNoBuffer[];
+      let totalNovo: number;
+      if (filtroResolucao === "respondidas" && profile) {
+        const respondidas = await listarQuestoesRespondidas(profile.id, filtros);
+        novosItens = respondidas.questoes.map((item) => ({
+          questao: item.questao,
+          respostaDada: item.respostaDada,
+        }));
+        totalNovo = respondidas.total;
+      } else {
+        const excluirIds =
+          filtroResolucao === "nao_respondidas" && profile
+            ? await listarIdsQuestoesRespondidas(profile.id)
+            : undefined;
+        const todas = await listQuestions(filtros, { excluirIds });
+        novosItens = todas.questoes.map((questao) => ({ questao }));
+        totalNovo = todas.total;
+      }
+
+      if (sequencia !== sequenciaBusca.current) return;
+
+      setQuestoes((atual) => [...atual, ...novosItens]);
+      setTotal(totalNovo);
+      if (novosItens.length > 0) {
         setPaginasBuscadas(proximaPagina);
         setIndice((atual) => atual + 1);
       }
     } catch (erroBusca) {
+      if (sequencia !== sequenciaBusca.current) return;
       setErro(erroBusca instanceof Error ? erroBusca.message : "Não foi possível carregar mais questões.");
     } finally {
-      setCarregando(false);
+      if (sequencia === sequenciaBusca.current) {
+        setCarregando(false);
+      }
     }
   }
 
@@ -128,7 +215,7 @@ export function QuestoesPage() {
     if (!profile || questoes[indice] === undefined) return;
     await registrarTentativa({
       alunoId: profile.id,
-      questionId: questoes[indice].id,
+      questionId: questoes[indice].questao.id,
       respostaDada: params.respostaLetra,
       correta: params.correta,
     });
@@ -153,6 +240,36 @@ export function QuestoesPage() {
           />
         </Card>
 
+        <Card>
+          <div className="flex rounded-control border border-line bg-canvas p-0.5 text-xs font-medium">
+            {OPCOES_RESOLUCAO.map((opcao) => (
+              <button
+                key={opcao.chave}
+                type="button"
+                onClick={() => {
+                  setFiltroResolucao(opcao.chave);
+                  if (profile) {
+                    salvarUltimaAtividade(profile.id, {
+                      area,
+                      ano,
+                      resolucao: opcao.chave,
+                    });
+                  }
+                  void buscarPrimeiraPagina(opcao.chave);
+                }}
+                className={cn(
+                  "rounded-control px-3 py-1.5 transition-colors",
+                  filtroResolucao === opcao.chave
+                    ? "bg-ink text-canvas"
+                    : "text-muted hover:text-ink",
+                )}
+              >
+                {opcao.rotulo}
+              </button>
+            ))}
+          </div>
+        </Card>
+
         {!carregando && !erro && (
           <p className="font-mono text-sm text-muted">{total.toLocaleString("pt-BR")} questões encontradas</p>
         )}
@@ -171,13 +288,15 @@ export function QuestoesPage() {
 
         {!carregando && !erro && questaoAtual && (
           <QuestionCard
-            key={questaoAtual.id}
-            questao={questaoAtual}
+            key={questaoAtual.questao.id}
+            questao={questaoAtual.questao}
             numero={indice + 1}
             total={total}
             onResponder={lidarComResposta}
             onProxima={lidarComProxima}
             temProxima={indice < total - 1}
+            modoRevisao={filtroResolucao === "respondidas"}
+            respostaAnterior={questaoAtual.respostaDada ?? null}
           />
         )}
 

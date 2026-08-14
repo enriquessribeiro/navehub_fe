@@ -7,10 +7,15 @@ import type { AreaFiltro } from "@/services/questionsService";
  * pra continuar dali. Implementação deliberadamente simples: localStorage,
  * sem tabela nova no banco.
  */
+const RESOLUCOES_VALIDAS = ["todas", "nao_respondidas", "respondidas"] as const;
+type ResolucaoValida = (typeof RESOLUCOES_VALIDAS)[number];
+
 export interface UltimaAtividade {
   /** Área filtrada — inclui os idiomas extras ("ingles"/"espanhol"). */
   area: AreaFiltro | null;
   ano: number | null;
+  /** Filtro de situação (todas / não respondidas / respondidas). */
+  resolucao: ResolucaoValida;
   atualizadoEm: string;
 }
 
@@ -32,7 +37,16 @@ export function lerUltimaAtividade(alunoId: string): UltimaAtividade | null {
   try {
     const raw = window.localStorage.getItem(storageKey(alunoId));
     if (!raw) return null;
-    return JSON.parse(raw) as UltimaAtividade;
+    const parsed = JSON.parse(raw) as Partial<UltimaAtividade>;
+    const resolucao = RESOLUCOES_VALIDAS.includes(parsed.resolucao as ResolucaoValida)
+      ? (parsed.resolucao as ResolucaoValida)
+      : "todas";
+    return {
+      area: parsed.area ?? null,
+      ano: parsed.ano ?? null,
+      resolucao,
+      atualizadoEm: parsed.atualizadoEm ?? new Date().toISOString(),
+    };
   } catch {
     return null;
   }
