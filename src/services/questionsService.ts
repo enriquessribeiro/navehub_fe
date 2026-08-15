@@ -172,7 +172,7 @@ export async function listarQuestoesRespondidas(
 ): Promise<{ questoes: QuestaoRespondida[]; total: number }> {
   let query = supabase
     .from("question_attempts")
-    .select("resposta_dada, correta, question:questions(*)")
+    .select("resposta_dada, correta, question:questions(*)", { count: "exact" })
     .eq("aluno_id", alunoId);
 
   if (filtros.ano) {
