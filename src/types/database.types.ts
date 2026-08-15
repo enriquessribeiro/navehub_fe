@@ -127,6 +127,13 @@ export interface Database {
         Args: Record<string, never>;
         Returns: { ano: number }[];
       };
+      /** Ver supabase/sql/0007_meta_questoes.sql: atualiza a meta semanal do
+       *  próprio usuário (security definer, valida 1–200). Não recebe id por
+       *  parâmetro — opera sobre `auth.uid()`. */
+      atualizar_meta_questoes: {
+        Args: { p_meta: number };
+        Returns: undefined;
+      };
     };
   };
 }

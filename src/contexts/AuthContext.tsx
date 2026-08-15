@@ -21,6 +21,8 @@ interface AuthContextValue {
   signIn: (email: string, senha: string) => Promise<{ error: string | null }>;
   signUp: (params: SignUpParams) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** Atualiza a meta semanal no perfil em memória (após salvar via RPC). */
+  atualizarMetaNoPerfil: (meta: number) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -163,9 +165,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const atualizarMetaNoPerfil = useCallback((meta: number) => {
+    setProfile((atual) => (atual ? { ...atual, meta_questoes: meta } : atual));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ session, profile, carregando, signIn, signUp, signOut }),
-    [session, profile, carregando, signIn, signUp, signOut]
+    () => ({ session, profile, carregando, signIn, signUp, signOut, atualizarMetaNoPerfil }),
+    [session, profile, carregando, signIn, signUp, signOut, atualizarMetaNoPerfil]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

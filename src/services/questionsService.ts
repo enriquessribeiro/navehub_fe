@@ -153,6 +153,58 @@ export async function listarIdsQuestoesRespondidas(
   return (data ?? []).map((linha) => linha.question_id);
 }
 
+/**
+ * Instante (UTC ISO) do início da semana do aluno: segunda-feira 00:00 no
+ * FUSO LOCAL do navegador. A meta é semanal (segunda–domingo) e o corte
+ * precisa alinhar com o dia que o aluno enxerga — o banco guarda timestamptz
+ * (UTC), então convertemos "segunda 00:00 local" para o instante UTC correto
+ * antes do filtro `gte`.
+ */
+export function inicioDaSemanaLocal(agora: Date = new Date()): string {
+  const local = new Date(agora);
+  const diaDaSemana = local.getDay(); // 0=domingo ... 6=sábado
+  const diasDesdeSegunda = (diaDaSemana + 6) % 7; // domingo=6
+  local.setDate(local.getDate() - diasDesdeSegunda);
+  local.setHours(0, 0, 0, 0);
+  return local.toISOString();
+}
+
+/** Quantas questões o aluno respondeu na semana corrente (segunda–agora). */
+export async function contarQuestoesDaSemana(
+  alunoId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("question_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("aluno_id", alunoId)
+    .gte("respondida_em", inicioDaSemanaLocal());
+
+  if (error) {
+    throw new Error(
+      `Não foi possível carregar seu progresso semanal: ${error.message}`,
+    );
+  }
+
+  return count ?? 0;
+}
+
+/** Atualiza a meta semanal de questões do próprio aluno (RPC security
+ *  definer — valida 1–200 no banco; ver supabase/sql/0007). O RPC opera sobre
+ *  `auth.uid()` — não recebe id por parâmetro de propósito. */
+export async function atualizarMetaQuestoes(meta: number): Promise<void> {
+  const { error } = await supabase.rpc("atualizar_meta_questoes", {
+    p_meta: meta,
+  });
+
+  if (error) {
+    throw new Error(
+      error.message.includes("Meta inválida")
+        ? "Meta inválida: informe um valor entre 1 e 200."
+        : `Não foi possível atualizar sua meta: ${error.message}`,
+    );
+  }
+}
+
 export interface QuestaoRespondida {
   questao: QuestionRow;
   /** Resposta que o aluno deu na última tentativa. */
