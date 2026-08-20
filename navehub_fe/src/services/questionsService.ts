@@ -1,32 +1,6 @@
 import { chaveDiaLocal } from "@/lib/diaLocal";
 import type { AreaEnem, QuestionRow } from "@/types/database.types";
 
-/**
- * Área selecionável no filtro de questões. Além das 4 áreas reais do ENEM,
- * inclui os idiomas estrangeiros: a API enem.dev usa o MESMO índice (ex.:
- * 2023-1) para a questão em português, espanhol e inglês — são "a mesma"
- * questão em línguas diferentes, então Inglês/Espanhol entram como opções de
- * área (a query vira { area: "linguagens", idioma: "ingles"/"espanhol" }).
- */
-export type AreaFiltro = AreaEnem | "ingles" | "espanhol";
-
-/**
- * Traduz a seleção do filtro de área em (área real, idioma) para a query:
- * - "ingles"/"espanhol" -> area=linguagens + idioma correspondente;
- * - áreas reais -> a própria área + idioma=portugues (Linguagens continua
- *   mostrando só as de português; as de idioma ficam na própria opção);
- * - vazio ("Todas") -> sem área e sem idioma (todas as línguas).
- */
-export function mapearAreaFiltro(filtro: AreaFiltro | null): {
-  area: AreaEnem | null;
-  idioma: string | null;
-} {
-  if (filtro === "ingles" || filtro === "espanhol") {
-    return { area: "linguagens", idioma: filtro };
-  }
-  return { area: filtro, idioma: filtro ? "portugues" : null };
-}
-
 /** Lista de anos oferecida no filtro quando a API ainda não respondeu. */
 export const ANOS_DISPONIVEIS = Array.from(
   { length: 2023 - 2009 + 1 },
@@ -81,8 +55,6 @@ function mapearQuestao(api: ApiQuestao): QuestionRow {
 
 export interface FiltrosQuestoes {
   ano?: number | null;
-  area?: AreaEnem | null;
-  idioma?: string | null;
   materia?: string | null;
   assunto?: string | null;
   pagina: number;
@@ -117,8 +89,6 @@ export async function listQuestions(
     porPagina: String(filtros.porPagina),
   });
   if (filtros.ano) parametros.set("ano", String(filtros.ano));
-  if (filtros.area) parametros.set("area", filtros.area);
-  if (filtros.idioma) parametros.set("idioma", filtros.idioma);
   if (filtros.materia) parametros.set("materia", filtros.materia);
   if (filtros.assunto) parametros.set("assunto", filtros.assunto);
 
@@ -133,26 +103,19 @@ export async function listQuestions(
   };
 }
 
-export async function listarMateriasDisponiveis(
-  area: AreaEnem | null,
-): Promise<string[]> {
-  const parametros = area ? `?area=${encodeURIComponent(area)}` : "";
+export async function listarMateriasDisponiveis(): Promise<string[]> {
   const { materias } = await buscarApi<{ materias: Array<{ materia: string }> }>(
-    `/metadados/materias${parametros}`,
+    `/metadados/materias`,
   );
   return materias.map((linha) => linha.materia).sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
 export async function listarAssuntosDisponiveis(
   materia: string | null,
-  area: AreaEnem | null,
 ): Promise<string[]> {
-  const parametros = new URLSearchParams();
-  if (area) parametros.set("area", area);
-  if (materia) parametros.set("materia", materia);
-  const consulta = parametros.toString();
+  const consulta = materia ? `?materia=${encodeURIComponent(materia)}` : "";
   const { assuntos } = await buscarApi<{ assuntos: Array<{ assunto: string }> }>(
-    `/metadados/assuntos${consulta ? `?${consulta}` : ""}`,
+    `/metadados/assuntos${consulta}`,
   );
   return assuntos.map((linha) => linha.assunto);
 }

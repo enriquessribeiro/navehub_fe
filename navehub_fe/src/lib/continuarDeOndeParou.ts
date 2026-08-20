@@ -1,15 +1,10 @@
-import type { AreaFiltro } from "@/services/questionsService";
-
 /**
- * "Continuar de onde parou" — decisão registrada no planejamento: em vez de
- * uma lógica de recomendação (fora do escopo do MVP), guardamos localmente
- * o último filtro/questão que o aluno usou e oferecemos um atalho direto
- * pra continuar dali. Implementação deliberadamente simples: localStorage,
- * sem tabela nova no banco.
+ * "Continuar de onde parou" — em vez de uma lógica de recomendação (fora do
+ * escopo do MVP), guardamos localmente o último filtro/questão que o aluno
+ * usou e oferecemos um atalho direto pra continuar dali. Implementação
+ * deliberadamente simples: localStorage, sem tabela nova no banco.
  */
 export interface UltimaAtividade {
-  /** Área filtrada — inclui os idiomas extras ("ingles"/"espanhol"). */
-  area: AreaFiltro | null;
   ano: number | null;
   atualizadoEm: string;
 }

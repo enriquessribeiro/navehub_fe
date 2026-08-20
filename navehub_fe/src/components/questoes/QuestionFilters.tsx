@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { ANOS_DISPONIVEIS } from "@/services/questionsService";
-import type { AreaFiltro } from "@/services/questionsService";
 import type { AreaEnem } from "@/types/database.types";
 
 export const ROTULOS_AREA: Record<AreaEnem, string> = {
@@ -11,16 +10,8 @@ export const ROTULOS_AREA: Record<AreaEnem, string> = {
   ciencias_natureza: "Ciências da Natureza",
 };
 
-/** Rótulo de cada opção do filtro de área (4 áreas reais + 2 idiomas). */
-const ROTULOS_AREA_FILTRO: Record<AreaFiltro, string> = {
-  ...ROTULOS_AREA,
-  ingles: "Inglês",
-  espanhol: "Espanhol",
-};
-
 interface QuestionFiltersProps {
   ano: number | null;
-  area: AreaFiltro | null;
   materia: string | null;
   assunto: string | null;
   materias: string[];
@@ -28,7 +19,6 @@ interface QuestionFiltersProps {
   carregandoMaterias: boolean;
   carregandoAssuntos: boolean;
   onChangeAno: (valor: number | null) => void;
-  onChangeArea: (valor: AreaFiltro | null) => void;
   onChangeMateria: (valor: string | null) => void;
   onChangeAssunto: (valor: string | null) => void;
   onBuscar: () => void;
@@ -39,7 +29,6 @@ interface QuestionFiltersProps {
 
 export function QuestionFilters({
   ano,
-  area,
   materia,
   assunto,
   materias,
@@ -47,7 +36,6 @@ export function QuestionFilters({
   carregandoMaterias,
   carregandoAssuntos,
   onChangeAno,
-  onChangeArea,
   onChangeMateria,
   onChangeAssunto,
   onBuscar,
@@ -67,19 +55,6 @@ export function QuestionFilters({
         {listaAnos.map((anoDisponivel) => (
           <option key={anoDisponivel} value={anoDisponivel}>
             {anoDisponivel}
-          </option>
-        ))}
-      </Select>
-
-      <Select
-        label="Área"
-        value={area ?? ""}
-        onChange={(e) => onChangeArea((e.target.value || null) as AreaFiltro | null)}
-      >
-        <option value="">Todas</option>
-        {(Object.keys(ROTULOS_AREA_FILTRO) as AreaFiltro[]).map((chave) => (
-          <option key={chave} value={chave}>
-            {ROTULOS_AREA_FILTRO[chave]}
           </option>
         ))}
       </Select>

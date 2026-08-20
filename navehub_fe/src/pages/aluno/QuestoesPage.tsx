@@ -11,14 +11,11 @@ import {
   listarAssuntosDisponiveis,
   listarMateriasDisponiveis,
   listQuestions,
-  mapearAreaFiltro,
   registrarTentativa,
-  type AreaFiltro,
 } from "@/services/questionsService";
-import type { AreaEnem, QuestionRow } from "@/types/database.types";
+import type { QuestionRow } from "@/types/database.types";
 
 interface EstadoNavegacao {
-  area?: AreaFiltro | null;
   ano?: number | null;
 }
 
@@ -33,7 +30,6 @@ export function QuestoesPage() {
   const estadoInicial = location.state as EstadoNavegacao | null;
 
   const [ano, setAno] = useState<number | null>(estadoInicial?.ano ?? null);
-  const [area, setArea] = useState<AreaFiltro | null>(estadoInicial?.area ?? null);
   const [materia, setMateria] = useState<string | null>(null);
   const [assunto, setAssunto] = useState<string | null>(null);
   const [materias, setMaterias] = useState<string[]>([]);
@@ -50,16 +46,11 @@ export function QuestoesPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[] | null>(null);
 
-  const areaReal = mapearAreaFiltro(area).area as AreaEnem | null;
-
-  // Matéria recarrega quando a área muda; assunto zera junto.
+  // Lista de matérias carrega uma vez ao abrir a página.
   useEffect(() => {
-    setMateria(null);
-    setAssunto(null);
-    setAssuntos([]);
     let ativo = true;
     setCarregandoMaterias(true);
-    void listarMateriasDisponiveis(areaReal)
+    void listarMateriasDisponiveis()
       .then((lista) => {
         if (ativo) setMaterias(lista);
       })
@@ -72,14 +63,14 @@ export function QuestoesPage() {
     return () => {
       ativo = false;
     };
-  }, [areaReal]);
+  }, []);
 
-  // Assunto recarrega quando a matéria (ou a área) muda.
+  // Assunto recarrega quando a matéria muda; a seleção anterior zera.
   useEffect(() => {
     setAssunto(null);
     let ativo = true;
     setCarregandoAssuntos(true);
-    void listarAssuntosDisponiveis(materia, areaReal)
+    void listarAssuntosDisponiveis(materia)
       .then((lista) => {
         if (ativo) setAssuntos(lista);
       })
@@ -92,18 +83,15 @@ export function QuestoesPage() {
     return () => {
       ativo = false;
     };
-  }, [materia, areaReal]);
+  }, [materia]);
 
   const buscarPrimeiraPagina = useCallback(async () => {
     setCarregando(true);
     setErro(null);
     setPaginasBuscadas(1);
     try {
-      const areaConsulta = mapearAreaFiltro(area);
       const resultado = await listQuestions({
         ano,
-        area: areaConsulta.area,
-        idioma: areaConsulta.idioma,
         materia,
         assunto,
         pagina: 1,
@@ -120,7 +108,7 @@ export function QuestoesPage() {
     } finally {
       setCarregando(false);
     }
-  }, [ano, area, materia, assunto]);
+  }, [ano, materia, assunto]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -133,7 +121,7 @@ export function QuestoesPage() {
 
   function lidarComBusca() {
     if (profile) {
-      salvarUltimaAtividade(profile.id, { area, ano });
+      salvarUltimaAtividade(profile.id, { ano });
     }
     void buscarPrimeiraPagina();
   }
@@ -147,11 +135,8 @@ export function QuestoesPage() {
     setCarregando(true);
     setErro(null);
     try {
-      const areaConsulta = mapearAreaFiltro(area);
       const resultado = await listQuestions({
         ano,
-        area: areaConsulta.area,
-        idioma: areaConsulta.idioma,
         materia,
         assunto,
         pagina: proximaPagina,
@@ -200,7 +185,6 @@ export function QuestoesPage() {
         <Card>
           <QuestionFilters
             ano={ano}
-            area={area}
             materia={materia}
             assunto={assunto}
             materias={materias}
@@ -209,7 +193,6 @@ export function QuestoesPage() {
             carregandoAssuntos={carregandoAssuntos}
             anos={anosDisponiveis ?? undefined}
             onChangeAno={setAno}
-            onChangeArea={setArea}
             onChangeMateria={setMateria}
             onChangeAssunto={setAssunto}
             onBuscar={lidarComBusca}

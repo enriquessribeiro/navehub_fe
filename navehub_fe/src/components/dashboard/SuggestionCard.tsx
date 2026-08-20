@@ -3,15 +3,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { UltimaAtividade } from "@/lib/continuarDeOndeParou";
 
-const ROTULOS_AREA: Record<string, string> = {
-  matematica: "Matemática",
-  linguagens: "Linguagens",
-  ciencias_humanas: "Ciências Humanas",
-  ciencias_natureza: "Ciências da Natureza",
-  ingles: "Inglês",
-  espanhol: "Espanhol",
-};
-
 interface ContinuarDeOndeParouCardProps {
   atividade: UltimaAtividade | null;
 }
@@ -35,7 +26,6 @@ export function ContinuarDeOndeParouCard({ atividade }: ContinuarDeOndeParouCard
   }
 
   const partesFiltro = [
-    atividade.area ? ROTULOS_AREA[atividade.area] : null,
     atividade.ano ? `ENEM ${atividade.ano}` : null,
   ].filter(Boolean);
 
@@ -50,7 +40,7 @@ export function ContinuarDeOndeParouCard({ atividade }: ContinuarDeOndeParouCard
       </div>
       <Link
         to="/questoes"
-        state={{ area: atividade.area, ano: atividade.ano }}
+        state={{ ano: atividade.ano }}
       >
         <Button className="w-full">Continuar</Button>
       </Link>
