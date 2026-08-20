@@ -8,6 +8,7 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { SignupPage } from "@/pages/auth/SignupPage";
 import { DashboardPage } from "@/pages/aluno/DashboardPage";
 import { QuestoesPage } from "@/pages/aluno/QuestoesPage";
+import { CadernoPage } from "@/pages/caderno/CadernoPage";
 import { RedacaoPage } from "@/pages/redacao/RedacaoPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
@@ -76,6 +77,7 @@ export function App() {
 
           <Route element={<RoleRoute allow={["aluno", "professor"]} />}>
             <Route path="/redacao" element={<RedacaoPage />} />
+            <Route path="/caderno" element={<CadernoPage />} />
           </Route>
         </Route>
       </Route>

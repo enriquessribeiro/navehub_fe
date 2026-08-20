@@ -1,0 +1,33 @@
+{
+  "name": "navehub-caderno-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NaveHub Caderno API — importa cadernos de questões em PDF e serve como API (matéria/assunto, figuras e gabarito)",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@fastify/multipart": "^9.0.1",
+    "@fastify/static": "^8.0.3",
+    "@google/generative-ai": "^0.21.0",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.1.0",
+    "pdf-to-png-converter": "^3.0.1",
+    "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.log
+
+# O banco com as questões importadas fica versionado (backup do dado);
+# arquivos temporários do WAL e artefatos gerados (uploads/figuras) ficam fora.
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal
+data/uploads/
+data/imagens/

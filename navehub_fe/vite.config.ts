@@ -29,6 +29,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (caminho) => caminho.replace(/^\/api/, ""),
       },
+      "/caderno-api": {
+        target: "http://localhost:3334",
+        changeOrigin: true,
+        rewrite: (caminho) => caminho.replace(/^\/caderno-api/, ""),
+      },
     },
   },
 });

@@ -39,13 +39,30 @@ function IconRedacao() {
   );
 }
 
+function IconCaderno() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5">
+      <path
+        d="M6 3.5h8a1.5 1.5 0 0 1 1.5 1.5v10a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 15V5A1.5 1.5 0 0 1 6 3.5Z"
+        stroke="currentColor"
+        strokeWidth={1.6}
+      />
+      <path d="M7.5 7h5M7.5 10h5M7.5 13h3" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 const ITENS_ALUNO: NavItem[] = [
   { to: "/dashboard", label: "Início", icon: <IconInicio /> },
   { to: "/questoes", label: "Questões", icon: <IconQuestoes /> },
   { to: "/redacao", label: "Redação", icon: <IconRedacao /> },
+  { to: "/caderno", label: "Caderno", icon: <IconCaderno /> },
 ];
 
-const ITENS_PROFESSOR: NavItem[] = [{ to: "/redacao", label: "Redação", icon: <IconRedacao /> }];
+const ITENS_PROFESSOR: NavItem[] = [
+  { to: "/redacao", label: "Redação", icon: <IconRedacao /> },
+  { to: "/caderno", label: "Caderno", icon: <IconCaderno /> },
+];
 
 interface SidebarProps {
   /** Mobile: mostra o drawer quando true. Desktop ignora e sempre mostra. */
