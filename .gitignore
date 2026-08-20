@@ -1,2 +1,5 @@
 # logs de execução local
 *.log
+
+# dependências temporárias da raiz (docx usado só para gerar a documentação)
+node_modules/
