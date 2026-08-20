@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.log
+
+# O banco de dados é o único lugar com as questões classificadas (2682) —
+# é um backup valioso que não se recria sem re-queimar a cota do Gemini,
+# então fica versionado. Só os arquivos temporários do WAL ficam de fora.
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal

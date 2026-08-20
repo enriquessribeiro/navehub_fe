@@ -1,0 +1,29 @@
+{
+  "name": "navehub-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NaveHub API — questões do ENEM classificadas por matéria e assunto (enem.dev + Gemini)",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "sync": "tsx scripts/sync.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@google/generative-ai": "^0.21.0",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}
