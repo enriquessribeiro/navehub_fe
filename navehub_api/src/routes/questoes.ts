@@ -8,10 +8,23 @@ const AREAS_VALIDAS = new Set([
   "ciencias_natureza",
 ]);
 
+interface AlternativaBruta {
+  letter: "A" | "B" | "C" | "D" | "E";
+  text: string | null;
+  file: string | null;
+  isCorrect: boolean;
+}
+
 function mapearQuestao(linha: Record<string, unknown>): QuestaoRow {
+  const alternativasBrutas = JSON.parse(linha.alternativas as string) as AlternativaBruta[];
   return {
     ...linha,
-    alternativas: JSON.parse(linha.alternativas as string),
+    alternativas: alternativasBrutas.map((alternativa) => ({
+      letra: alternativa.letter,
+      texto: alternativa.text,
+      arquivo: alternativa.file,
+      correta: alternativa.isCorrect,
+    })),
     arquivos: JSON.parse(linha.arquivos as string),
   } as QuestaoRow;
 }
